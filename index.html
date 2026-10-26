@@ -29,13 +29,13 @@
         .app-view.active { display: block; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen bg-[#090d16] flex flex-col justify-center">
 
     <!-- ========================================================== -->
-    <!-- TELA 1: LOGIN & PORTARIA BLINDADA EMC                      -->
+    <!-- TELA 1: LOGIN & PORTARIA BLINDADA EMC (CENTRALIZADO)       -->
     <!-- ========================================================== -->
-    <div id="screen-login" class="app-view active min-h-screen flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl border-t-4 border-brandGreen">
+    <div id="screen-login" class="app-view active w-full max-w-md mx-auto p-4">
+        <div class="glass-panel w-full p-8 rounded-2xl shadow-2xl border-t-4 border-brandGreen">
             <div class="text-center mb-6">
                 <span class="bg-brandGreen/20 text-brandGreen text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Emarket MC</span>
                 <h1 class="text-2xl font-black mt-3 text-white tracking-wide">Quitandinha Bank</h1>
@@ -104,7 +104,7 @@
     <!-- ========================================================== -->
     <!-- TELA 2: DASHBOARD PRINCIPAL (EMC)                          -->
     <!-- ========================================================== -->
-    <div id="screen-dashboard" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-dashboard" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <header class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <div class="flex items-center space-x-3">
                 <div class="bg-brandGreen text-slate-950 font-black p-3 rounded-xl">EMC</div>
@@ -183,7 +183,7 @@
     <!-- ========================================================== -->
     <!-- TELA 3: ABASTECIMENTO                                      -->
     <!-- ========================================================== -->
-    <div id="screen-abastecimento" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-abastecimento" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
             <div>
                 <h2 class="text-xl font-bold text-white">🛒 Lista Semanal do Atacadista</h2>
@@ -196,7 +196,7 @@
     <!-- ========================================================== -->
     <!-- TELA 4: CURVA ABC                                          -->
     <!-- ========================================================== -->
-    <div id="screen-abc" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-abc" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
             <div>
                 <h2 class="text-xl font-bold text-white">📊 Auditoria Curva ABC</h2>
@@ -209,7 +209,7 @@
     <!-- ========================================================== -->
     <!-- TELA 5: VALIDADES                                          -->
     <!-- ========================================================== -->
-    <div id="screen-validade" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-validade" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
             <div>
                 <h2 class="text-xl font-bold text-white">⏰ Controle de Validade Crítica</h2>
@@ -222,7 +222,7 @@
     <!-- ========================================================== -->
     <!-- TELA 6: VIPs                                               -->
     <!-- ========================================================== -->
-    <div id="screen-vips" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-vips" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
             <div>
                 <h2 class="text-xl font-bold text-white">👑 Clube de Embaixadores VIP</h2>
@@ -235,7 +235,7 @@
     <!-- ========================================================== -->
     <!-- TELA 7: AUTO-EVOLUÇÃO                                      -->
     <!-- ========================================================== -->
-    <div id="screen-evolucao" class="app-view min-h-screen p-4 md:p-8 pb-24">
+    <div id="screen-evolucao" class="app-view max-w-7xl mx-auto w-full p-4 md:p-8">
         <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center border-l-4 border-accentGold">
             <div>
                 <h2 class="text-xl font-bold text-white">🧬 Painel de Auto-Evolução v6.0</h2>
@@ -257,7 +257,15 @@
         function mudarTela(idTela) {
             document.querySelectorAll('.app-view').forEach(el => el.classList.remove('active'));
             document.getElementById(idTela).classList.add('active');
-            window.scrollTo(0, 0); // Sempre puxa a página para o topo ao trocar de aba
+            
+            // Ajusta o alinhamento vertical do body dependendo da tela
+            const body = document.body;
+            if (idTela === 'screen-login') {
+                body.className = "min-h-screen bg-[#090d16] flex flex-col justify-center";
+            } else {
+                body.className = "min-h-screen bg-[#090d16] flex flex-col justify-start py-6";
+            }
+            window.scrollTo(0, 0);
         }
 
         function mostrarCadastro(exibir) {
