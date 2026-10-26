@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Emarket MC</title>
+    <title>Quitandinha Bank • EMC</title>
     <!-- Tailwind CSS para design corporativo moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -41,7 +41,7 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- RADIOS DE CONTROLE DE NAVEGAÇÃO HÍBRIDA (Garante funcionamento mesmo com restrições iOS) -->
+    <!-- RADIOS DE CONTROLE DE NAVEGAÇÃO HÍBRIDA -->
     <input type="radio" name="nav-tabs" id="tab-login" class="nav-radio" checked>
     <input type="radio" name="nav-tabs" id="tab-dashboard" class="nav-radio">
     <input type="radio" name="nav-tabs" id="tab-abastecimento" class="nav-radio">
@@ -53,14 +53,14 @@
     <div class="app-container">
 
         <!-- ========================================================== -->
-        <!-- TELA 1: LOGIN & PORTARIA BLINDADA ROCHA CENTRAL             -->
+        <!-- TELA 1: LOGIN & PORTARIA BLINDADA EMC                      -->
         <!-- ========================================================== -->
         <div id="screen-login" class="screen-view min-h-screen flex items-center justify-center p-4">
             <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl border-t-4 border-brandGreen">
                 <div class="text-center mb-6">
                     <span class="bg-brandGreen/20 text-brandGreen text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Emarket MC</span>
-                    <h1 class="text-2xl font-black mt-3 text-white tracking-wide">Minha Quitandinha</h1>
-                    <p class="text-xs text-slate-400 mt-1">Plataforma SaaS de Gestão Autônoma & Segurança</p>
+                    <h1 class="text-2xl font-black mt-3 text-white tracking-wide">Quitandinha Bank</h1>
+                    <p class="text-xs text-slate-400 mt-1">Plataforma SaaS • Segurança EMC & Telegram</p>
                 </div>
 
                 <!-- URL DO GOOGLE APPS SCRIPT -->
@@ -79,24 +79,24 @@
                         <label class="block text-xs font-semibold text-slate-300 mb-1">Senha de Acesso:</label>
                         <input type="password" id="loginPass" placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-brandGreen">
                     </div>
-                    <button onclick="executarLogin()" class="w-full bg-brandGreen hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-lg transition shadow-lg text-sm uppercase tracking-wider">
+                    <button onclick="executarLogin()" class="w-full bg-brandGreen hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-lg transition shadow-lg text-sm uppercase tracking-wider cursor-pointer">
                         🔐 Entrar no Sistema
                     </button>
                     <div class="text-center mt-3">
-                        <button onclick="mostrarCadastro(true)" class="text-xs text-brandBlue hover:underline">Não tem acesso? Solicitar Cadastro</button>
+                        <button onclick="mostrarCadastro(true)" class="text-xs text-brandBlue hover:underline cursor-pointer">Não tem acesso? Solicitar Cadastro</button>
                     </div>
                 </div>
 
                 <!-- FORMULÁRIO DE SOLICITAÇÃO DE CADASTRO -->
                 <div id="cadastroFormSection" class="space-y-4 hidden">
-                    <h3 class="text-sm font-bold text-accentGold border-b border-slate-700 pb-2">📝 Pedir Acesso (Vai direto pro Telegram do Filipe)</h3>
+                    <h3 class="text-sm font-bold text-accentGold border-b border-slate-700 pb-2">📝 Pedir Acesso (Vai direto pro Telegram)</h3>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">Seu Nome Completo:</label>
-                        <input type="text" id="cadNome" placeholder="Ex: Lucas Sócio" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="cadNome" placeholder="Ex: Sócio / Operador" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">E-mail / Login Desejado:</label>
-                        <input type="text" id="cadLogin" placeholder="Ex: lucas@quitandinha" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
+                        <input type="text" id="cadLogin" placeholder="exemplo@email.com" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 mb-1">Crie uma Senha:</label>
@@ -110,11 +110,11 @@
                             <option value="Financeiro">Financeiro</option>
                         </select>
                     </div>
-                    <button onclick="enviarSolicitacaoCadastro()" class="w-full bg-brandBlue hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition text-sm uppercase tracking-wider">
+                    <button onclick="enviarSolicitacaoCadastro()" class="w-full bg-brandBlue hover:bg-blue-600 text-white font-bold py-3 rounded-lg transition text-sm uppercase tracking-wider cursor-pointer">
                         🚀 Enviar Pedido ao Telegram
                     </button>
                     <div class="text-center mt-3">
-                        <button onclick="mostrarCadastro(false)" class="text-xs text-slate-400 hover:underline">Voltar para o Login</button>
+                        <button onclick="mostrarCadastro(false)" class="text-xs text-slate-400 hover:underline cursor-pointer">Voltar para o Login</button>
                     </div>
                 </div>
 
@@ -122,18 +122,16 @@
             </div>
         </div>
 
-
         <!-- ========================================================== -->
-        <!-- TELA 2: DASHBOARD PRINCIPAL (ROCHA CENTRAL)                 -->
+        <!-- TELA 2: DASHBOARD PRINCIPAL (EMC)                          -->
         <!-- ========================================================== -->
         <div id="screen-dashboard" class="screen-view min-h-screen p-4 md:p-8 pb-24">
-            <!-- Barra Superior do Sistema -->
             <header class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <div class="flex items-center space-x-3">
-                    <div class="bg-brandGreen text-slate-950 font-black p-3 rounded-xl">MQ</div>
+                    <div class="bg-brandGreen text-slate-950 font-black p-3 rounded-xl">EMC</div>
                     <div>
-                        <h2 class="text-lg font-bold text-white">Painel Rocha Central</h2>
-                        <p class="text-xs text-brandGreen font-medium">● Conectado à Nuvem (Auto-Sync Ativo)</p>
+                        <h2 class="text-lg font-bold text-white" id="badge-nome-usuario">Painel EMC</h2>
+                        <p class="text-xs text-brandGreen font-medium">● Conectado à Nuvem & Telegram Ativo</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 overflow-x-auto w-full md:w-auto justify-end">
@@ -146,7 +144,6 @@
                 </div>
             </header>
 
-            <!-- Cards de Indicadores Rápidos -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="glass-panel p-5 rounded-2xl border-l-4 border-brandBlue">
                     <p class="text-xs text-slate-400 font-semibold uppercase">Faturamento Mês (Est.)</p>
@@ -170,87 +167,52 @@
                 </div>
             </div>
 
-            <!-- Carrossel de 6 Portas / Módulos Principais -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="glass-panel p-6 rounded-2xl hover:border-brandGreen transition cursor-pointer" onclick="document.getElementById('tab-abastecimento').checked = true;">
                     <div class="text-3xl mb-3">🛒</div>
                     <h3 class="text-lg font-bold text-white">Lista Semanal do Atacadista</h3>
-                    <p class="text-xs text-slate-400 mt-1">Cálculo automático de reposição baseado no estoque atual vs consumo médio da loja.</p>
+                    <p class="text-xs text-slate-400 mt-1">Cálculo automático de reposição baseado no estoque atual.</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl hover:border-brandBlue transition cursor-pointer" onclick="document.getElementById('tab-abc').checked = true;">
                     <div class="text-3xl mb-3">📊</div>
                     <h3 class="text-lg font-bold text-white">Auditoria Curva ABC</h3>
-                    <p class="text-xs text-slate-400 mt-1">Gestão inteligente dos 120 produtos com separação rigorosa por margem e giro.</p>
+                    <p class="text-xs text-slate-400 mt-1">Gestão inteligente dos produtos por margem e giro.</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl hover:border-accentGold transition cursor-pointer" onclick="document.getElementById('tab-validade').checked = true;">
                     <div class="text-3xl mb-3">⏰</div>
                     <h3 class="text-lg font-bold text-white">Controle de Validade (-7 Dias)</h3>
-                    <p class="text-xs text-slate-400 mt-1">Rastreio preventivo para zerar perdas de perecíveis nas prateleiras.</p>
+                    <p class="text-xs text-slate-400 mt-1">Rastreio preventivo para zerar perdas de perecíveis.</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl hover:border-purple-500 transition cursor-pointer" onclick="document.getElementById('tab-vips').checked = true;">
                     <div class="text-3xl mb-3">👑</div>
                     <h3 class="text-lg font-bold text-white">Gestão Clube VIP</h3>
-                    <p class="text-xs text-slate-400 mt-1">Controle de embaixadores, cashback e campanhas de recompra rápida.</p>
+                    <p class="text-xs text-slate-400 mt-1">Controle de embaixadores e cashback.</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl hover:border-emerald-400 transition cursor-pointer" onclick="document.getElementById('tab-evolucao').checked = true;">
                     <div class="text-3xl mb-3">🧬</div>
                     <h3 class="text-lg font-bold text-white">Painel de Auto-Evolução (v6.0)</h3>
-                    <p class="text-xs text-slate-400 mt-1">Análise contínua do sistema com sugestões automáticas de melhorias técnicas.</p>
+                    <p class="text-xs text-slate-400 mt-1">Análise contínua com sugestões automáticas.</p>
                 </div>
                 <div class="glass-panel p-6 rounded-2xl hover:border-blue-400 transition cursor-pointer" onclick="sincronizarBancoNuvemManual()">
                     <div class="text-3xl mb-3">☁️</div>
                     <h3 class="text-lg font-bold text-white">Forçar Sync Nuvem</h3>
-                    <p class="text-xs text-slate-400 mt-1">Gravação imediata do estado atual na planilha do Google Drive em tempo real.</p>
+                    <p class="text-xs text-slate-400 mt-1">Gravação imediata na planilha do Google.</p>
                 </div>
             </div>
         </div>
 
-
         <!-- ========================================================== -->
-        <!-- TELA 3: ABASTECIMENTO / LISTA DO ATACADISTA                 -->
+        <!-- TELA 3: ABASTECIMENTO                                      -->
         <!-- ========================================================== -->
         <div id="screen-abastecimento" class="screen-view min-h-screen p-4 md:p-8 pb-24">
             <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">🛒 Lista Semanal do Atacadista</h2>
-                    <p class="text-xs text-slate-400">Reposição inteligente calculada com base no consumo das unidades.</p>
+                    <p class="text-xs text-slate-400">Reposição inteligente calculada.</p>
                 </div>
                 <label for="tab-dashboard" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer">← Voltar ao Painel</label>
             </div>
-            <div class="glass-panel p-6 rounded-2xl">
-                <p class="text-sm text-slate-300 mb-4">Itens recomendados para compra imediata no Assaí / Atacadão:</p>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs text-slate-300">
-                        <thead class="bg-slate-900 text-slate-400 uppercase">
-                            <tr>
-                                <th class="p-3">Produto</th>
-                                <th class="p-3">Estoque Atual</th>
-                                <th class="p-3">Meta PAR</th>
-                                <th class="p-3">Sugerido p/ Compra</th>
-                                <th class="p-3">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-800">
-                            <tr>
-                                <td class="p-3 font-bold text-white">Coca-Cola 2L Retornável</td>
-                                <td class="p-3 text-yellow-400">3 un</td>
-                                <td class="p-3">15 un</td>
-                                <td class="p-3 font-bold text-brandGreen">12 fardos</td>
-                                <td class="p-3"><button onclick="alert('Item marcado na lista de compras do Atacadista!')" class="bg-brandGreen text-slate-950 px-3 py-1 rounded font-bold">✔ Adicionar</button></td>
-                            </tr>
-                            <tr>
-                                <td class="p-3 font-bold text-white">Red Bull Lata 250ml</td>
-                                <td class="p-3 text-red-400">2 un</td>
-                                <td class="p-3">24 un</td>
-                                <td class="p-3 font-bold text-brandGreen">1 caixa</td>
-                                <td class="p-3"><button onclick="alert('Item marcado na lista de compras do Atacadista!')" class="bg-brandGreen text-slate-950 px-3 py-1 rounded font-bold">✔ Adicionar</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
-
 
         <!-- ========================================================== -->
         <!-- TELA 4: CURVA ABC                                          -->
@@ -259,28 +221,11 @@
             <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">📊 Auditoria Curva ABC</h2>
-                    <p class="text-xs text-slate-400">Classificação inteligente dos produtos de maior rentabilidade.</p>
+                    <p class="text-xs text-slate-400">Classificação inteligente dos produtos.</p>
                 </div>
                 <label for="tab-dashboard" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer">← Voltar ao Painel</label>
             </div>
-            <div class="glass-panel p-6 rounded-2xl">
-                <div class="grid grid-cols-3 gap-4 mb-6 text-center">
-                    <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl">
-                        <span class="text-xs font-bold text-emerald-400 uppercase">Classe A (80% Faturamento)</span>
-                        <h4 class="text-xl font-black text-white mt-1">18 Produtos</h4>
-                    </div>
-                    <div class="bg-blue-500/10 border border-blue-500/30 p-4 rounded-xl">
-                        <span class="text-xs font-bold text-blue-400 uppercase">Classe B (15% Faturamento)</span>
-                        <h4 class="text-xl font-black text-white mt-1">42 Produtos</h4>
-                    </div>
-                    <div class="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl">
-                        <span class="text-xs font-bold text-amber-400 uppercase">Classe C (5% Faturamento)</span>
-                        <h4 class="text-xl font-black text-white mt-1">60 Produtos</h4>
-                    </div>
-                </div>
-            </div>
         </div>
-
 
         <!-- ========================================================== -->
         <!-- TELA 5: VALIDADES                                          -->
@@ -289,15 +234,11 @@
             <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">⏰ Controle de Validade Crítica</h2>
-                    <p class="text-xs text-slate-400">Monitoramento rigoroso de itens com vencimento em até 7 dias.</p>
+                    <p class="text-xs text-slate-400">Monitoramento rigoroso de itens.</p>
                 </div>
                 <label for="tab-dashboard" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer">← Voltar ao Painel</label>
             </div>
-            <div class="glass-panel p-6 rounded-2xl">
-                <p class="text-xs text-slate-400 mb-4">Nenhum perecível crítico vencendo hoje. Alerta preventivo ativo para os lotes de iogurtes e frios.</p>
-            </div>
         </div>
-
 
         <!-- ========================================================== -->
         <!-- TELA 6: VIPs                                               -->
@@ -306,41 +247,22 @@
             <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center">
                 <div>
                     <h2 class="text-xl font-bold text-white">👑 Clube de Embaixadores VIP</h2>
-                    <p class="text-xs text-slate-400">Gestão de clientes recorrentes e campanhas de cashback.</p>
+                    <p class="text-xs text-slate-400">Gestão de clientes recorrentes.</p>
                 </div>
                 <label for="tab-dashboard" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer">← Voltar ao Painel</label>
             </div>
-            <div class="glass-panel p-6 rounded-2xl">
-                <p class="text-xs text-slate-400 mb-4">75 clientes cadastrados com compras recorrentes nos últimos 30 dias.</p>
-            </div>
         </div>
 
-
         <!-- ========================================================== -->
-        <!-- TELA 7: PAINEL DE AUTO-EVOLUÇÃO (v6.0)                     -->
+        <!-- TELA 7: AUTO-EVOLUÇÃO                                      -->
         <!-- ========================================================== -->
         <div id="screen-evolucao" class="screen-view min-h-screen p-4 md:p-8 pb-24">
             <div class="glass-panel p-6 rounded-2xl mb-6 flex justify-between items-center border-l-4 border-accentGold">
                 <div>
-                    <h2 class="text-xl font-bold text-white">🧬 Painel de Auto-Evolução & Otimização v6.0</h2>
-                    <p class="text-xs text-slate-400">Sugestões ativas geradas pelo Gemini para manter sua franquia no topo.</p>
+                    <h2 class="text-xl font-bold text-white">🧬 Painel de Auto-Evolução v6.0</h2>
+                    <p class="text-xs text-slate-400">Otimizações ativas.</p>
                 </div>
                 <label for="tab-dashboard" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-bold cursor-pointer">← Voltar ao Painel</label>
-            </div>
-            <div class="glass-panel p-6 rounded-2xl space-y-4">
-                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                    <span class="text-xs font-bold text-accentGold uppercase">💡 Sugestão Ativa #01</span>
-                    <h4 class="text-sm font-bold text-white mt-1">Integração de Leitor de Código de Barreira por Câmera</h4>
-                    <p class="text-xs text-slate-300 mt-1">Adicionar escaneamento direto via `html5-qrcode` no corredor da loja para conferência rápida de inventário.</p>
-                </div>
-                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
-                    <span class="text-xs font-bold text-brandGreen uppercase">💡 Sugestão Ativa #02</span>
-                    <h4 class="text-sm font-bold text-white mt-1">Automação de Alerta de Quebra de Caixa</h4>
-                    <p class="text-xs text-slate-300 mt-1">Disparo imediato via Telegram caso haja divergência entre o faturamento teórico e o real.</p>
-                </div>
-                <button onclick="gerarBriefingGemini()" class="w-full bg-accentGold hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-lg text-xs uppercase tracking-wider transition">
-                    📋 Copiar Briefing Técnico para Evoluir com o Gemini
-                </button>
             </div>
         </div>
 
@@ -348,7 +270,6 @@
 
     <!-- SCRIPT DE CONEXÃO E AUTENTICAÇÃO -->
     <script>
-        // Restaura URL do Apps Script salva localmente se houver
         window.addEventListener('DOMContentLoaded', () => {
             const savedUrl = localStorage.getItem('quitandinha_script_url');
             if (savedUrl) {
@@ -378,25 +299,28 @@
             }
 
             localStorage.setItem('quitandinha_script_url', url);
-            feedback.innerHTML = '<span class="text-brandBlue">⏳ Autenticando com a Rocha Central...</span>';
+            feedback.innerHTML = '<span class="text-brandBlue">⏳ Autenticando com a EMC...</span>';
 
             try {
                 const response = await fetch(url, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ acao: 'LOGIN', login, senha })
                 });
                 const res = await response.json();
 
                 if (res.status === 'APROVADO') {
                     feedback.innerHTML = `<span class="text-brandGreen">✅ Bem-vindo, ${res.nome}! Entrando...</span>`;
+                    document.getElementById('badge-nome-usuario').innerText = `Painel EMC • ${res.nome}`;
                     setTimeout(() => {
+                        // Ativa o rádio da dashboard em CSS puro para mudar de tela instantaneamente
                         document.getElementById('tab-dashboard').checked = true;
                     }, 800);
                 } else {
                     feedback.innerHTML = `<span class="text-red-400">${res.mensagem}</span>`;
                 }
             } catch (err) {
-                feedback.innerHTML = '<span class="text-red-400">❌ Erro de conexão com o servidor Google. Verifique a URL.</span>';
+                feedback.innerHTML = '<span class="text-red-400">❌ Erro de conexão com o servidor Google.</span>';
             }
         }
 
@@ -413,11 +337,12 @@
                 return;
             }
 
-            feedback.innerHTML = '<span class="text-brandBlue">⏳ Enviando pedido ao Telegram do Filipe...</span>';
+            feedback.innerHTML = '<span class="text-brandBlue">⏳ Enviando pedido ao Telegram...</span>';
 
             try {
                 const response = await fetch(url, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ acao: 'SOLICITAR_CADASTRO', nome, login, senha, cargo })
                 });
                 const res = await response.json();
@@ -439,18 +364,13 @@
             try {
                 await fetch(url, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ acao: 'SALVAR_BANCO', autor: 'Filipe (Painel)', resumoAcao: 'Sync manual', dados: { ultimaModificacao: new Date() } })
                 });
                 alert('✅ Sincronizado com sucesso na nuvem!');
             } catch (e) {
                 alert('Erro ao sincronizar.');
             }
-        }
-
-        function gerarBriefingGemini() {
-            const briefing = `Olá Gemini! Aqui está o estado atual do Quitandinha Bank v6.0 (Rocha Central). Preciso de otimizações para o módulo de Atacadista e Curva ABC.`;
-            navigator.clipboard.writeText(briefing);
-            alert('📋 Briefing copiado para a área de transferência! Cole aqui no chat para continuarmos a evolução.');
         }
     </script>
 </body>
