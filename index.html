@@ -1085,11 +1085,12 @@
                         <div>
                             <span class="text-slate-400 block text-[10px] uppercase font-bold">Filtrar Lista / Inativos 30d</span>
                             <select id="filtroListaSemanal" onchange="renderizarListaSemanal()" class="w-full p-1.5 rounded font-bold mt-1">
-                                <option value="REPOR" selected>🚨 Todos que Precisam Repor Agora (AA+BA+BB+CA)</option>
+                                <option value="REPOR" selected>🚨 Todos que Precisam Repor Agora (Ativos)</option>
                                 <option value="CARRINHO">✅ Apenas Itens Já no Carrinho</option>
-                                <option value="TODOS_ATIVOS">📦 Todos os 120 Produtos Ativos</option>
+                                <option value="TODOS_ATIVOS">📦 Todos os Produtos Ativos da Loja</option>
                                 <option value="PASSIVO">⚠️ Passivo de Inventário (&gt;30d sem giro c/ estoque)</option>
-                                <option value="FORA_LINHA">🚫 Fora de Linha / Expurgados (&gt;30d sem giro e zerados)</option>
+                                <option value="FORA_LINHA">🚫 Fora de Linha (&gt;30d sem giro e zerados)</option>
+                                <option value="IGNORADOS">🙈 Ignorados Manualmente / Excluídos no Inventário</option>
                             </select>
                         </div>
                     </div>
@@ -1235,11 +1236,12 @@
                     <div class="flex flex-wrap gap-2 w-full lg:w-auto">
                         <input type="text" id="buscaProdutoABC" oninput="renderizarTabelaABC()" placeholder="🔍 Buscar produto..." class="p-2 rounded-lg text-xs w-full sm:w-56">
                         <select id="filtroTabelaABC" onchange="renderizarTabelaABC()" class="p-2 rounded-lg text-xs font-bold">
-                            <option value="TOP20" selected>⚡ Top 25 Mais Vendidos</option>
-                            <option value="TODOS">📋 Mostrar Todos os 120 Produtos</option>
+                            <option value="TOP20" selected>⚡ Top 25 Mais Vendidos (Ativos)</option>
+                            <option value="TODOS">📋 Todos os Produtos Ativos</option>
                             <option value="URGENTES">🚨 Margem Baixa (&lt; 30%)</option>
                             <option value="AA">🔥 Apenas Curva AA</option>
-                            <option value="INATIVOS">🚫 Inativos / Passivo (&gt;30 dias)</option>
+                            <option value="INATIVOS">⚠️ Passivo / Fora de Linha (&gt;30 dias)</option>
+                            <option value="IGNORADOS">🙈 Ignorados / Excluídos no Inventário</option>
                         </select>
                         <button onclick="ativarModoLucroMaximo()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3.5 py-2 rounded-lg text-xs">Aplicar Preços Sugeridos</button>
                     </div>
@@ -1670,6 +1672,9 @@
     <!-- ======================================================================= -->
     <!-- MOTOR JAVASCRIPT CENTRAL JAGUAR v6.0 (ZERO DADOS FIXOS NO FRONT-END)    -->
     <!-- ======================================================================= -->
+<!-- ======================================================================= -->
+    <!-- MOTOR JAVASCRIPT CENTRAL JAGUAR v6.0 COMPLETO (PARTE 1 DE 2)            -->
+    <!-- ======================================================================= -->
     <script>
         // COFRE EM MEMÓRIA (NASCE VAZIO E É HIDRATADO PELO GOOGLE APPS SCRIPT APÓS O LOGIN)
         let catalogo = [];
@@ -1679,6 +1684,7 @@
         let metasCustom = [];
         let gastosExtras = [];
         let movimentosSocios = [];
+        let idsTransacoesProcessadas = [];
 
         let valoresOcultos = false;
         let quadranteAtivoFiltro = 'TODOS';
@@ -1720,7 +1726,30 @@
             if (keySalva && document.getElementById('geminiKeyInput')) {
                 document.getElementById('geminiKeyInput').value = keySalva;
             }
+            try {
+                idsTransacoesProcessadas = JSON.parse(localStorage.getItem('jaguar_v60_tx_ids') || '[]');
+            } catch (e) { idsTransacoesProcessadas = []; }
+
+            garantirOpcoesFiltroIgnorados();
         });
+
+        // Garante que os seletores HTML tenham a opção "🙈 Ignorados / Excluídos no Inventário"
+        function garantirOpcoesFiltroIgnorados() {
+            const selSem = document.getElementById('filtroListaSemanal');
+            if (selSem && !Array.from(selSem.options).some(o => o.value === 'IGNORADOS')) {
+                const opt = document.createElement('option');
+                opt.value = 'IGNORADOS';
+                opt.textContent = '🙈 Ignorados Manualmente / Excluídos no Inventário';
+                selSem.appendChild(opt);
+            }
+            const selABC = document.getElementById('filtroTabelaABC');
+            if (selABC && !Array.from(selABC.options).some(o => o.value === 'IGNORADOS')) {
+                const opt = document.createElement('option');
+                opt.value = 'IGNORADOS';
+                opt.textContent = '🙈 Ignorados / Excluídos no Inventário';
+                selABC.appendChild(opt);
+            }
+        }
 
         function mostrarFormularioCadastro(exibir) {
             document.getElementById('loginFeedback').innerHTML = '';
@@ -1830,13 +1859,14 @@
                     preco: Number(p.preco) || 0,
                     sug: Number(p.sug) || Number(p.preco) || 0,
                     giroSemanal: Number(p.giroSemanal) || 1,
-                    parSemanal: Number(p.parSemanal) || 2,
+                    parSemanal: p.parSemanal !== undefined ? Number(p.parSemanal) : 2,
                     fardo: Number(p.fardo) || 6,
                     estoqueAtual: p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0,
                     noCarrinho: Boolean(p.noCarrinho),
                     validade: p.validade ? String(p.validade).slice(0, 10) : '',
                     ultimaMov: p.ultimaMov ? String(p.ultimaMov).slice(0, 10) : hojeISO,
-                    statusItem: p.statusItem || 'ATIVO'
+                    statusItem: p.statusItem || 'ATIVO',
+                    statusManualFixo: (p.statusItem === 'IGNORADO' || p.statusItem === 'ARQUIVADO_HISTORICO' || p.statusItem === 'PASSIVO_INVENTARIO' || p.statusItem === 'FORA_DE_LINHA')
                 }));
                 catalogoBackupNuvem = JSON.parse(JSON.stringify(catalogo));
             }
@@ -1925,8 +1955,24 @@
         }
 
         // =========================================================================
-        // 2. REGRA DE EXPURGO AUTOMÁTICO DE 30 DIAS (PASSIVO VS. FORA DE LINHA)
+        // 2. GESTÃO DE CICLO 30 DIAS + BOTÕES IGNORAR (🙈) E EXCLUIR PÓS-INVENTÁRIO (🗑️)
         // =========================================================================
+        function itemEstaOcultoOuExcluido(p) {
+            return p.statusItem === 'IGNORADO' || p.statusItem === 'ARQUIVADO_HISTORICO' || p.statusItem === 'FORA_DE_LINHA';
+        }
+
+        // PRESERVA 100% DAS VENDAS PASSADAS NA DRE MESMO QUANDO O ITEM É IGNORADO OU EXCLUÍDO DO CATÁLOGO ATIVO!
+        function calcularMargemPonderadaCatalogo() {
+            let fatTotal = 0, cmvTotal = 0;
+            catalogo.forEach(p => {
+                if ((Number(p.qtd) || 0) > 0) {
+                    fatTotal += (p.preco * p.qtd);
+                    cmvTotal += (p.custo * p.qtd);
+                }
+            });
+            return fatTotal > 0 ? ((fatTotal - cmvTotal) / fatTotal) * 100 : 31.34;
+        }
+
         function calcularDiasSemMovimentacao(dataISO) {
             if (!dataISO) return 0;
             const dt = new Date(dataISO + "T00:00:00");
@@ -1937,11 +1983,10 @@
 
         function aplicarRegraExpurgo30Dias() {
             catalogo.forEach(p => {
-                // Se o item teve tendência muito negativa na base legada (-30 ou pior) ou >30 dias reais sem movimento
+                if (p.statusManualFixo || p.statusItem === 'IGNORADO' || p.statusItem === 'ARQUIVADO_HISTORICO') return;
+
                 const diasSemGiro = calcularDiasSemMovimentacao(p.ultimaMov);
                 const inativoPorTendencia = (p.tendenciaMes !== undefined && p.tendenciaMes <= -30 && !p.forcarAtivoManual);
-
-                if (p.statusManualFixo) return; // Respeita se o operador travou manualmente
 
                 if (diasSemGiro >= 30 || inativoPorTendencia) {
                     if ((p.estoqueAtual || 0) <= 0) {
@@ -1963,10 +2008,42 @@
             if (novoStatus === 'ATIVO') {
                 p.forcarAtivoManual = true;
                 p.ultimaMov = new Date().toISOString().slice(0, 10);
-            } else if (novoStatus === 'FORA_DE_LINHA') {
-                p.estoqueAtual = 0;
+                if (!p.parSemanal || p.parSemanal <= 0) p.parSemanal = 2;
+            } else if (novoStatus === 'IGNORADO' || novoStatus === 'FORA_DE_LINHA' || novoStatus === 'ARQUIVADO_HISTORICO') {
                 p.noCarrinho = false;
             }
+            salvarTudo();
+        }
+
+        function ignorarItemRapido(id) {
+            const p = catalogo.find(x => x.id === id);
+            if (!p) return;
+            p.statusItem = 'IGNORADO';
+            p.statusManualFixo = true;
+            p.noCarrinho = false;
+            salvarTudo();
+        }
+
+        function excluirItemMantendoHistorico(id) {
+            const p = catalogo.find(x => x.id === id);
+            if (!p) return;
+            if (!confirm(`🗑️ Retirar "${p.nome}" do catálogo ativo da loja?\n\nAs ${p.qtd || 0} vendas históricas dele continuarão salvas normalmente no cálculo financeiro!`)) return;
+            p.statusItem = 'ARQUIVADO_HISTORICO';
+            p.statusManualFixo = true;
+            p.estoqueAtual = 0;
+            p.parSemanal = 0;
+            p.noCarrinho = false;
+            salvarTudo();
+        }
+
+        function restaurarItemParaAtivo(id) {
+            const p = catalogo.find(x => x.id === id);
+            if (!p) return;
+            p.statusItem = 'ATIVO';
+            p.statusManualFixo = true;
+            p.forcarAtivoManual = true;
+            if (!p.parSemanal || p.parSemanal <= 0) p.parSemanal = 2;
+            p.ultimaMov = new Date().toISOString().slice(0, 10);
             salvarTudo();
         }
 
@@ -2078,29 +2155,29 @@
             document.getElementById('homeMargemReal').innerText = `${margemAtual.toFixed(1)}%`;
             document.getElementById('homeBreakEven').innerText = brl(calc.breakEven);
 
-            // Conta lotes vencendo em <= 10 dias
-            const lotesCriticos = catalogo.filter(p => p.validade && calcularDiasRestantesValidade(p.validade) <= 10).length;
+            const lotesCriticos = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && (p.estoqueAtual || 0) > 0 && calcularDiasRestantesValidade(p.validade) <= 10).length;
             document.getElementById('homePillValidade').innerText = `${lotesCriticos} lote(s) vencem em ≤ 10 dias`;
             document.getElementById('badgeHomeValidade').innerText = `${lotesCriticos} Alerta(s)`;
 
-            // Conta todos os produtos ativos que precisam de reposição (todas as curvas)
             const itensParaRepor = catalogo.filter(p => {
-                if (p.statusItem === 'FORA_DE_LINHA' || p.statusItem === 'PASSIVO_INVENTARIO') return false;
-                const par = p.parSemanal || 2;
-                const est = p.estoqueAtual !== undefined ? p.estoqueAtual : 0;
+                if (p.statusItem !== 'ATIVO') return false;
+                const par = p.parSemanal !== undefined ? Number(p.parSemanal) : 2;
+                const est = p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0;
                 return (par - est) > 0;
             }).length;
 
-            const passivos = catalogo.filter(p => p.statusItem === 'PASSIVO_INVENTARIO').length;
-            document.getElementById('homePillAtacadista').innerText = `${itensParaRepor} itens p/ repor (${passivos} em passivo 30d)`;
-            document.getElementById('badgeHomeTotalSKUs').innerText = `${catalogo.length} SKUs`;
+            const ativosTotais = catalogo.filter(p => !itemEstaOcultoOuExcluido(p)).length;
+            const ocultosTotais = catalogo.filter(p => itemEstaOcultoOuExcluido(p)).length;
+            document.getElementById('homePillAtacadista').innerText = `${itensParaRepor} itens p/ repor (${ocultosTotais} ocultos/fora)`;
+            document.getElementById('badgeHomeTotalSKUs').innerText = `${ativosTotais} Ativos`;
             document.getElementById('badgeHomeTotalVIPs').innerText = `${listaVIPs.length} VIPs`;
         }
 
         // =========================================================================
-        // 4. LISTA DE COMPRAS SEMANAL DESTRAVADA (100% DOS SKUS + GESTÃO 30 DIAS)
+        // 4. LISTA DE COMPRAS SEMANAL (TODAS AS CURVAS + BOTÕES 🙈 IGNORAR / 🗑️ EXCLUIR)
         // =========================================================================
         function renderizarListaSemanal() {
+            garantirOpcoesFiltroIgnorados();
             const tbody = document.getElementById('tabelaListaSemanal');
             if (!tbody) return;
             const filtro = document.getElementById('filtroListaSemanal')?.value || 'REPOR';
@@ -2111,19 +2188,19 @@
             let totalCarrinho = 0;
             let qtdProdutosRepor = 0;
 
-            // Ordena por prioridade de curva (AA -> BA -> BB -> CA) e maior giro
             const pesoCurva = { 'AA': 1, 'AB': 2, 'BA': 2, 'BB': 3, 'CA': 4, 'CC': 5 };
             const listaOrdenada = [...catalogo].sort((a, b) => {
                 const pa = pesoCurva[a.cel] || 3;
                 const pb = pesoCurva[b.cel] || 3;
                 if (pa !== pb) return pa - pb;
-                return (b.giroSemanal || 0) - (a.giroSemanal || 0);
+                const faltaA = Math.max(0, (a.parSemanal || 0) - (a.estoqueAtual || 0));
+                const faltaB = Math.max(0, (b.parSemanal || 0) - (b.estoqueAtual || 0));
+                return faltaB - faltaA;
             });
 
             listaOrdenada.forEach(p => {
                 const status = p.statusItem || 'ATIVO';
-                const parOriginal = p.parSemanal || Math.max(2, Math.ceil((p.giroSemanal || 1) * 1.4));
-                // Se estiver em Passivo de Inventário ou Fora de Linha, trava o PAR em 0 para não mandar comprar
+                const parOriginal = p.parSemanal !== undefined ? Number(p.parSemanal) : 2;
                 const par = (status === 'ATIVO') ? parOriginal : 0;
                 const est = p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0;
                 const falta = (status === 'ATIVO') ? Math.max(0, par - est) : 0;
@@ -2137,31 +2214,36 @@
                     totalCarrinho += subtotal;
                 }
 
-                // Aplicação dos filtros da Lista de Compras
                 if (filtro === 'REPOR' && (status !== 'ATIVO' || falta <= 0)) return;
                 if (filtro === 'CARRINHO' && !p.noCarrinho) return;
                 if (filtro === 'TODOS_ATIVOS' && status !== 'ATIVO') return;
                 if (filtro === 'PASSIVO' && status !== 'PASSIVO_INVENTARIO') return;
                 if (filtro === 'FORA_LINHA' && status !== 'FORA_DE_LINHA') return;
+                if (filtro === 'IGNORADOS' && status !== 'IGNORADO' && status !== 'ARQUIVADO_HISTORICO') return;
 
                 const tamFardo = p.fardo || 6;
                 const fardosInteiros = Math.floor(falta / tamFardo);
                 const avulsos = falta % tamFardo;
                 let txtFardo = falta > 0 ? `${falta} un avulsas` : 'Estoque OK';
                 if (status === 'PASSIVO_INVENTARIO') {
-                    txtFardo = `<span class="text-amber-300 font-bold">⚠️ Queimar ${est} un paradas (&gt;30d)</span>`;
+                    txtFardo = `<span class="text-amber-300 font-bold">⚠️ Queimar ${est} un paradas</span>`;
+                } else if (status === 'IGNORADO' || status === 'ARQUIVADO_HISTORICO') {
+                    txtFardo = `<span class="text-slate-400">🙈 Oculto do catálogo ativo (Vendas preservadas: ${p.qtd || 0} un)</span>`;
                 } else if (status === 'FORA_DE_LINHA') {
-                    txtFardo = `<span class="text-rose-400">🚫 Expurgado do catálogo</span>`;
+                    txtFardo = `<span class="text-rose-400">🚫 Fora de linha</span>`;
                 } else if (fardosInteiros > 0) {
                     txtFardo = `<strong>${fardosInteiros} fardo(s) de ${tamFardo}</strong>` + (avulsos > 0 ? ` + ${avulsos} un` : '');
                 }
 
                 let badgeStatus = `<span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold badge-${p.cel}">${p.cel}</span>`;
-                if (status === 'PASSIVO_INVENTARIO') {
-                    badgeStatus += ` <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold">Passivo 30d</span>`;
-                } else if (status === 'FORA_DE_LINHA') {
-                    badgeStatus += ` <span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-bold">Fora Linha</span>`;
-                }
+                if (status === 'PASSIVO_INVENTARIO') badgeStatus += ` <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold">Passivo</span>`;
+                else if (status === 'IGNORADO') badgeStatus += ` <span class="px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 text-[9px] font-bold">🙈 Ignorado</span>`;
+                else if (status === 'ARQUIVADO_HISTORICO') badgeStatus += ` <span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9px] font-bold">🧹 Excluído Inv.</span>`;
+
+                const botoesAcaoRapida = (status === 'IGNORADO' || status === 'ARQUIVADO_HISTORICO')
+                    ? `<button onclick="restaurarItemParaAtivo(${p.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">♻️ Restaurar</button>`
+                    : `<button onclick="ignorarItemRapido(${p.id})" class="bg-slate-800 hover:bg-amber-500/30 text-slate-300 hover:text-amber-300 border border-slate-700 px-2 py-1 rounded text-[10px] font-bold" title="Ignorar/Ocultar (ex: Pringles, Água antiga)">🙈 Ignorar</button>
+                       <button onclick="excluirItemMantendoHistorico(${p.id})" class="bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white px-2 py-1 rounded text-[10px] font-bold ml-1" title="Excluir do catálogo ativo mantendo vendas passadas">🗑️</button>`;
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800/60 transition ${p.noCarrinho ? 'bg-emerald-950/30' : ''}">
@@ -2178,19 +2260,13 @@
                         <td class="py-2.5 px-2 text-center font-extrabold ${falta > 0 ? 'text-emerald-400' : 'text-slate-500'}">${falta} un</td>
                         <td class="py-2.5 px-2 text-slate-200">${txtFardo}</td>
                         <td class="py-2.5 px-2 font-extrabold text-white">${brl(subtotal)}</td>
-                        <td class="py-2.5 px-2 text-right">
-                            <select onchange="alternarStatusItem30d(${p.id}, this.value)" class="p-1 rounded text-[10px] font-bold">
-                                <option value="ATIVO" ${status === 'ATIVO' ? 'selected' : ''}>🟢 Ativo</option>
-                                <option value="PASSIVO_INVENTARIO" ${status === 'PASSIVO_INVENTARIO' ? 'selected' : ''}>⚠️ Passivo 30d</option>
-                                <option value="FORA_DE_LINHA" ${status === 'FORA_DE_LINHA' ? 'selected' : ''}>🚫 Fora Linha</option>
-                            </select>
-                        </td>
+                        <td class="py-2.5 px-2 text-right whitespace-nowrap">${botoesAcaoRapida}</td>
                     </tr>
                 `;
             });
 
             document.getElementById('kpiTotalListaSemanal').innerText = brl(totalLista);
-            document.getElementById('kpiItensFaltantes').innerText = `${qtdProdutosRepor} produtos precisam de reposição`;
+            document.getElementById('kpiItensFaltantes').innerText = `${qtdProdutosRepor} produtos ativos p/ repor`;
             document.getElementById('kpiTotalNoCarrinho').innerText = brl(totalCarrinho);
             const statusOrc = document.getElementById('kpiStatusOrcamento');
             if (totalCarrinho > orcamento) {
@@ -2223,19 +2299,19 @@
             let cont = 0;
 
             catalogo.forEach(p => {
-                if (p.statusItem === 'FORA_DE_LINHA' || p.statusItem === 'PASSIVO_INVENTARIO') return;
-                const par = p.parSemanal || 2;
+                if (p.statusItem !== 'ATIVO') return;
+                const par = p.parSemanal !== undefined ? Number(p.parSemanal) : 2;
                 const est = p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0;
                 const falta = Math.max(0, par - est);
                 if (falta > 0) {
                     const sub = falta * p.custo;
                     total += sub;
                     cont++;
-                    linhas.push(`• *[${p.cel}] ${p.nome}*: Comprar *${falta} un* (Na loja: ${est} | Meta: ${par}) ➔ Teto ${brl(p.custo)} = *${brl(sub)}*`);
+                    linhas.push(`• *[${p.cel}] ${p.nome}*: Comprar *${falta} un* (Loja: ${est} | Meta: ${par}) ➔ ${brl(sub)}`);
                 }
             });
 
-            linhas.push(`\n📦 *Total de SKUs p/ Repor:* ${cont} itens`);
+            linhas.push(`\n📦 *Total de SKUs Ativos p/ Repor:* ${cont} itens`);
             linhas.push(`💰 *Investimento Estimado no Atacadista:* ${brl(total)}`);
             const textoFinal = linhas.join("\n");
 
@@ -2243,7 +2319,7 @@
 
             if (enviarParaTelegram) {
                 await enviarTextoDiretoTelegram(textoFinal);
-                alert("🐆 Lista de Compras enviada para o seu Bot do Telegram (pronta para encaminhar ao sócio) e copiada!");
+                alert("🐆 Lista de Compras enviada para o seu Bot do Telegram e copiada!");
             } else {
                 alert("📲 Lista de Compras completa copiada para a área de transferência!");
             }
@@ -2256,7 +2332,7 @@
             const hojeISO = new Date().toISOString().slice(0, 10);
 
             catalogo.forEach(p => {
-                const par = p.parSemanal || 2;
+                const par = p.parSemanal !== undefined ? Number(p.parSemanal) : 2;
                 const est = p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0;
                 const falta = Math.max(0, par - est);
                 if (p.noCarrinho && falta > 0) {
@@ -2280,20 +2356,19 @@
             salvarTudo();
             alert(`✅ ${lancados} produtos do carrinho foram lançados nas Compras do Mês e o Estoque da Loja foi abastecido na Planilha Google!`);
         }
-
         // =========================================================================
-        // 5. CARROSSEL DE 6 PORTAS CORRIGIDO (ATUALIZAÇÃO FORÇADA DO SALDO REAL)
+        // 5. CARROSSEL DE 6 PORTAS (PLANOGRAMA 403 ITENS + INVENTÁRIO + GANHO VENDAS)
         // =========================================================================
         const CONFIG_PORTAS_CARROSSEL = {
             'LISTA_SEMANAL': {
-                badge: 'Porta Ativa: 📦 1. Atualizar Saldo Real / Gerar Lista de Compras',
-                titulo: 'Solte aqui a planilha de Produtos, Estoque ou Giro da Semana',
-                regras: 'Força a atualização do Estoque Atual na prateleira (ex: Coca-Cola 5 ➔ 4), recalcula o que falta comprar e salva na Planilha Google!'
+                badge: 'Porta Ativa: 📦 1. Planograma Completo / Saldo Real & Reposição',
+                titulo: 'Solte aqui o "Planograma completo todas as lojas.xlsx" ou planilha de Estoque',
+                regras: 'Lê Qtd. Ideal (PAR), Qtd. Atual (Loja), Qtd. Reposição e Validade, e detecta automaticamente cortes de inventário!'
             },
             'TRANSACOES': {
-                badge: 'Porta Ativa: 👑 2. Histórico de Transações & Campeões VIP',
+                badge: 'Porta Ativa: 👑 2. Ganhos de Vendas (Totem + App) & Campeões VIP',
                 titulo: 'Solte aqui a planilha "Transações Todas as lojas.xlsx"',
-                regras: 'Colunas exigidas pela trava: "Status", "Cliente/Nome social" e "Total Pago" (ou "Total Carrinho").'
+                regras: 'Soma automaticamente as vendas em Crédito, PIX e Débito no mês (com trava anti-duplicidade por ID Transação) e atualiza o Clube VIP!'
             },
             'CATALOGO': {
                 badge: 'Porta Ativa: 🏷️ 3. Catálogo de Preços, Custos e Estoque',
@@ -2312,7 +2387,7 @@
             },
             'BACKUP_JSON': {
                 badge: 'Porta Ativa: 💾 6. Restaurar Backup Completo (.JSON)',
-                titulo: 'Solte aqui seu arquivo de backup ".json"',
+                titulo: 'Solte aqui o seu ficheiro de backup ".json"',
                 regras: 'Valida a integridade do JSON antes de restaurar e sincronizar com a nuvem.'
             }
         };
@@ -2346,7 +2421,11 @@
         function extrairValorColuna(row, nomesPossiveis) {
             const chavesRow = Object.keys(row);
             for (const nomeAlvo of nomesPossiveis) {
-                const chaveEncontrada = chavesRow.find(k => normalizarTexto(k) === normalizarTexto(nomeAlvo) || normalizarTexto(k).includes(normalizarTexto(nomeAlvo)));
+                const alvoNorm = normalizarTexto(nomeAlvo).replace(/\./g, '');
+                const chaveEncontrada = chavesRow.find(k => {
+                    const kNorm = normalizarTexto(k).replace(/\./g, '');
+                    return kNorm === alvoNorm || kNorm.includes(alvoNorm);
+                });
                 if (chaveEncontrada !== undefined && row[chaveEncontrada] !== undefined && row[chaveEncontrada] !== '') {
                     return row[chaveEncontrada];
                 }
@@ -2361,6 +2440,126 @@
             return parseFloat(limpo);
         }
 
+        function normalizarDataPlanilha(val) {
+            if (!val) return '';
+            if (val instanceof Date && !isNaN(val)) {
+                return val.toISOString().slice(0, 10);
+            }
+            const s = String(val).trim();
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+                const [d, m, y] = s.slice(0, 10).split('/');
+                return `${y}-${m}-${d}`;
+            }
+            return '';
+        }
+
+        function tokenizarNomeProduto(str) {
+            let s = normalizarTexto(str);
+            s = s.replace(/\b(\d+)\s*litros?\b/g, '$1l')
+                 .replace(/\b(\d+)\s*lt\b/g, '$1l')
+                 .replace(/\b(\d+)\s*ml\b/g, '$1ml')
+                 .replace(/\b(\d+)\s*gramas?\b/g, '$1g')
+                 .replace(/\b(\d+)\s*gr\b/g, '$1g')
+                 .replace(/\bcoca\s+cola\b/g, 'cocacola')
+                 .replace(/\bcoca-cola\b/g, 'cocacola');
+            const ignorar = new Set(['de','da','do','com','sem','para','por','em','pacote','caixa','garrafa','lata','sabor','unidade','unidades','un','pct','refrigerante','chocolate','salgadinho','biscoito','mini','acucar']);
+            return s.split(/[^a-z0-9]+/).filter(t => t && !ignorar.has(t));
+        }
+
+        function encontrarProdutoInteligente(nomePlanilha, eanPlanilha, precoPlanilha) {
+            if (eanPlanilha) {
+                const porEan = catalogo.find(p => p.ean && String(p.ean) === String(eanPlanilha));
+                if (porEan) return porEan;
+            }
+            const normPlan = normalizarTexto(nomePlanilha);
+            const exato = catalogo.find(p => normalizarTexto(p.nome) === normPlan);
+            if (exato) return exato;
+
+            const tokensPlan = tokenizarNomeProduto(nomePlanilha);
+            if (tokensPlan.length === 0) return null;
+
+            let melhorItem = null;
+            let melhorScore = 0;
+
+            catalogo.forEach(p => {
+                const tokensCat = tokenizarNomeProduto(p.nome);
+                if (tokensCat.length === 0) return;
+                const setCat = new Set(tokensCat);
+                let comuns = 0;
+                tokensPlan.forEach(t => { if (setCat.has(t)) comuns++; });
+                if (comuns === 0) return;
+
+                let score = (2.0 * comuns) / (tokensPlan.length + tokensCat.length);
+                if (!isNaN(precoPlanilha) && Math.abs(p.preco - precoPlanilha) < 0.5) {
+                    score += 0.15;
+                }
+                if (score > melhorScore) {
+                    melhorScore = score;
+                    melhorItem = p;
+                }
+            });
+
+            return melhorScore >= 0.72 ? melhorItem : null;
+        }
+
+        // Analisa a planilha "Transações Todas as lojas" (Totem + Clientes VIP + Modalidades)
+        function analisarTransacoesFinanceirasEVIP(rows) {
+            let totCred = 0, totPix = 0, totDeb = 0;
+            let novCred = 0, novPix = 0, novDeb = 0;
+            let qtdSucesso = 0, qtdNovasID = 0, qtdVIPs = 0;
+            let mesDetectado = document.getElementById('mesAtivoSelect')?.value || '2026-10';
+            const novosIDs = [];
+
+            rows.forEach(r => {
+                if (String(r['Status'] || '').trim() !== 'Sucesso') return;
+                const valor = converterNumeroBR(r['Total Pago'] || r['Total Carrinho']) || 0;
+                if (valor <= 0) return;
+                qtdSucesso++;
+
+                const idTx = String(r['ID Transação'] || r['ID Transacao'] || '').trim();
+                const isNova = !idTx || !idsTransacoesProcessadas.includes(idTx);
+                if (isNova && idTx) {
+                    novosIDs.push(idTx);
+                    qtdNovasID++;
+                }
+
+                const dtRaw = r['Data / Hora (GMT -3)'];
+                if (dtRaw) {
+                    const dtObj = (dtRaw instanceof Date) ? dtRaw : new Date(dtRaw);
+                    if (!isNaN(dtObj)) {
+                        const ym = `${dtObj.getFullYear()}-${String(dtObj.getMonth() + 1).padStart(2, '0')}`;
+                        if (NOMES_MESES[ym]) mesDetectado = ym;
+                    }
+                }
+
+                const mod = String(r['Modalidade'] || '').toLowerCase().trim();
+                if (mod === 'credit' || mod.includes('cred')) {
+                    totCred += valor;
+                    if (isNova) novCred += valor;
+                } else if (mod === 'pix' || mod.includes('pix')) {
+                    totPix += valor;
+                    if (isNova) novPix += valor;
+                } else {
+                    totDeb += valor;
+                    if (isNova) novDeb += valor;
+                }
+
+                const nomeCli = String(r['Cliente/Nome social'] || '').trim();
+                if (nomeCli && !nomeCli.startsWith('Totem') && nomeCli !== 'undefined') {
+                    qtdVIPs++;
+                }
+            });
+
+            return {
+                qtdSucesso, qtdNovasID, qtdVIPs, mesDetectado, novosIDs,
+                totCred: +totCred.toFixed(2), totPix: +totPix.toFixed(2), totDeb: +totDeb.toFixed(2),
+                novCred: +novCred.toFixed(2), novPix: +novPix.toFixed(2), novDeb: +novDeb.toFixed(2),
+                somaTotal: +(totCred + totPix + totDeb).toFixed(2),
+                somaNovas: +(novCred + novPix + novDeb).toFixed(2)
+            };
+        }
+
         function inspecionarArquivoCarrossel(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -2368,11 +2567,11 @@
             const painel = document.getElementById('painelInspetorAntiQuebra');
             const titulo = document.getElementById('tituloInspetorArquivo');
             painel.classList.remove('hidden');
-            titulo.innerText = `Arquivo Analisado: ${file.name}`;
+            titulo.innerText = `Ficheiro Analisado: ${file.name}`;
 
             if (portaCarrosselAtiva === 'BACKUP_JSON' || file.name.endsWith('.json')) {
                 if (!file.name.endsWith('.json')) {
-                    bloquearPorIncompatibilidade("Você selecionou a Porta 6 (.JSON), mas enviou uma planilha Excel.");
+                    bloquearPorIncompatibilidade("Selecionou a Porta 6 (.JSON), mas enviou uma planilha Excel.");
                     return;
                 }
                 const reader = new FileReader();
@@ -2394,7 +2593,7 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const wb = XLSX.read(data, { type: 'array' });
+                    const wb = XLSX.read(data, { type: 'array', cellDates: true });
                     const abas = wb.SheetNames;
 
                     if (portaCarrosselAtiva === 'BIN_MAQUININHA') {
@@ -2410,53 +2609,114 @@
                         return;
                     }
 
-                    const abaAlvo = abas.find(a => normalizarTexto(a) === 'produtos') || abas[0];
+                    const abaAlvo = abas.find(a => normalizarTexto(a).includes('planograma') || normalizarTexto(a).includes('transac') || normalizarTexto(a) === 'produtos') || abas[0];
                     const rows = XLSX.utils.sheet_to_json(wb.Sheets[abaAlvo]);
                     if (!rows || rows.length === 0) {
                         bloquearPorIncompatibilidade("A planilha enviada está vazia.");
                         return;
                     }
 
-                    if (portaCarrosselAtiva === 'TRANSACOES') {
-                        const aprovadas = rows.filter(r => String(r['Status'] || '').trim() === 'Sucesso');
-                        payloadValidadoPendente = { tipo: 'TRANSACOES', rows };
-                        aprovarInspecao(`✅ Transações Validadas (${aprovadas.length} vendas com Sucesso)`, "Pronto para atualizar o Clube VIP e salvar na Planilha Google.", JSON.stringify(aprovadas.slice(0, 2), null, 2));
+                    const cols0 = Object.keys(rows[0] || {});
+                    const ehPlanilhaTransacoes = cols0.includes('ID Transação') || cols0.includes('Total Pago') || cols0.includes('Cliente/Nome social');
+
+                    // DETECÇÃO AUTOMÁTICA DA PLANILHA DE GANHOS DE VENDAS ("Transações Todas as lojas.xlsx")
+                    if (portaCarrosselAtiva === 'TRANSACOES' || ehPlanilhaTransacoes) {
+                        const resumoTx = analisarTransacoesFinanceirasEVIP(rows);
+                        payloadValidadoPendente = { tipo: 'TRANSACOES', rows, resumoTx };
+
+                        const previaTx = [
+                            `📅 Mês Identificado nas Transações: ${NOMES_MESES[resumoTx.mesDetectado] || resumoTx.mesDetectado}`,
+                            `✅ Total na Planilha (${resumoTx.qtdSucesso} vendas c/ Sucesso): ${brl(resumoTx.somaTotal)} (Crédito: ${brl(resumoTx.totCred)} | PIX: ${brl(resumoTx.totPix)} | Débito: ${brl(resumoTx.totDeb)})`,
+                            `🆕 Vendas Ainda Não Somadas (${resumoTx.qtdNovasID} novos IDs): ${brl(resumoTx.somaNovas)} (Crédito: +${brl(resumoTx.novCred)} | PIX: +${brl(resumoTx.novPix)} | Débito: +${brl(resumoTx.novDeb)})`,
+                            `👑 Compras de Moradores Identificados p/ Clube VIP: ${resumoTx.qtdVIPs} registo(s)`
+                        ].join('\n');
+
+                        aprovarInspecao(
+                            `✅ Planilha de Ganhos de Vendas & Transações Validada (${resumoTx.qtdSucesso} vendas = ${brl(resumoTx.somaTotal)})!`,
+                            `Escolha abaixo como deseja atualizar o faturamento de ${NOMES_MESES[resumoTx.mesDetectado] || resumoTx.mesDetectado}:`,
+                            previaTx
+                        );
+
+                        const resumoEl = document.getElementById('resumoInspetorTexto');
+                        resumoEl.innerHTML += `
+                            <div class="mt-3 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
+                                <span class="text-emerald-300 font-bold">💰 Como aplicar este Ganho de Vendas no Mês (${resumoTx.mesDetectado})?</span>
+                                <select id="modoAplicacaoTransacoesMes" class="p-1.5 rounded-lg font-extrabold text-white">
+                                    <option value="SOMAR_NOVAS" selected>➕ Somar vendas novas (+${brl(resumoTx.somaNovas)}) ao saldo atual do mês</option>
+                                    <option value="SUBSTITUIR_MES">📌 Substituir faturamento do mês pelo total da planilha (${brl(resumoTx.somaTotal)})</option>
+                                    <option value="APENAS_VIP">👑 Atualizar apenas Clube VIP (não mexer no faturamento)</option>
+                                </select>
+                            </div>
+                        `;
                         return;
                     }
 
-                    // PORTAS 1, 3 e 4: SIMULAÇÃO PRÉVIA DE ESTOQUE ANTES -> DEPOIS (CORREÇÃO COCA-COLA 4 vs 5)
-                    const modoEstoque = document.getElementById('modoLeituraEstoqueCarrossel')?.value || 'SOBRESCREVER_ESTOQUE';
+                    // PLANOGRAMA COMPLETO (403 ITENS) + DETECÇÃO DE CORTE DE INVENTÁRIO
                     let mudancasPreview = [];
-                    let encontrados = 0;
+                    let vinculados = 0, novosSKUs = 0, precisamRepor = 0, somaUnidadesRepor = 0;
+                    const idsPresentesNaPlanilha = new Set();
 
                     rows.forEach(r => {
-                        const nomeRaw = extrairValorColuna(r, ['Nome', 'Produto', 'Item', 'Descrição', 'Descricao']);
+                        const nomeRaw = extrairValorColuna(r, ['Nome', 'Produto', 'Item', 'Descrição']);
                         if (!nomeRaw) return;
-                        const nomeNorm = normalizarTexto(nomeRaw);
-                        const itemCat = catalogo.find(p => normalizarTexto(p.nome) === nomeNorm || normalizarTexto(p.nome).includes(nomeNorm) || nomeNorm.includes(normalizarTexto(p.nome)));
+                        const eanRaw = extrairValorColuna(r, ['Código de Barras', 'Codigo de Barras', 'EAN']);
+                        const precoCol = converterNumeroBR(extrairValorColuna(r, ['Preço Atual', 'Preco Atual', 'Preço', 'Preco']));
+                        const idealCol = converterNumeroBR(extrairValorColuna(r, ['Qtd. Ideal', 'Qtd Ideal', 'Meta PAR', 'Par']));
+                        const atualCol = converterNumeroBR(extrairValorColuna(r, ['Qtd. Atual', 'Qtd Atual', 'Estoque Atual', 'Estoque', 'Saldo']));
+
+                        const itemCat = encontrarProdutoInteligente(nomeRaw, eanRaw, precoCol);
                         if (itemCat) {
-                            encontrados++;
-                            const valEstoqueCol = converterNumeroBR(extrairValorColuna(r, ['Estoque Atual', 'Estoque', 'Saldo', 'Saldo Atual', 'Qtd Estoque', 'Unidades', 'Quantidade']));
-                            if (!isNaN(valEstoqueCol) && mudancasPreview.length < 8) {
-                                const estAntes = itemCat.estoqueAtual !== undefined ? itemCat.estoqueAtual : 0;
-                                const estDepois = (modoEstoque === 'ABATER_ESTOQUE') ? Math.max(0, estAntes - valEstoqueCol) : Math.max(0, valEstoqueCol);
-                                const faltaDepois = Math.max(0, (itemCat.parSemanal || 2) - estDepois);
-                                mudancasPreview.push(`• ${itemCat.nome}: Estoque Loja [${estAntes} un ➔ ${estDepois} un] | Comprar p/ PAR (${itemCat.parSemanal}): ${faltaDepois} un`);
-                            }
+                            vinculados++;
+                            idsPresentesNaPlanilha.add(itemCat.id);
+                        } else {
+                            novosSKUs++;
+                        }
+
+                        const parFinal = !isNaN(idealCol) ? Math.max(0, Math.round(idealCol)) : (itemCat ? itemCat.parSemanal : 2);
+                        const estFinal = !isNaN(atualCol) ? Math.max(0, Math.round(atualCol)) : (itemCat ? itemCat.estoqueAtual : 0);
+                        const falta = Math.max(0, parFinal - estFinal);
+
+                        if (parFinal > 0 && falta > 0 && (!itemCat || itemCat.statusItem !== 'IGNORADO')) {
+                            precisamRepor++;
+                            somaUnidadesRepor += falta;
+                        }
+
+                        if (mudancasPreview.length < 10 && (itemCat || falta > 0)) {
+                            const estAnt = itemCat ? itemCat.estoqueAtual : '-';
+                            const parAnt = itemCat ? itemCat.parSemanal : '-';
+                            mudancasPreview.push(`• ${nomeRaw}: Loja [${estAnt} ➔ ${estFinal} un] | Meta PAR [${parAnt} ➔ ${parFinal} un] | Falta Comprar: ${falta} un`);
                         }
                     });
 
-                    if (encontrados === 0) {
-                        bloquearPorIncompatibilidade("Nenhum produto desta planilha coincidiu com o catálogo da loja. Verifique se escolheu o ficheiro correto.");
-                        return;
-                    }
+                    const ativosAtuais = catalogo.filter(p => !itemEstaOcultoOuExcluido(p));
+                    const ausentesDoInventario = ativosAtuais.filter(p => !idsPresentesNaPlanilha.has(p.id));
 
-                    payloadValidadoPendente = { tipo: portaCarrosselAtiva, rows };
+                    payloadValidadoPendente = {
+                        tipo: portaCarrosselAtiva,
+                        rows,
+                        idsPresentesNaPlanilha: Array.from(idsPresentesNaPlanilha),
+                        qtdAusentes: ausentesDoInventario.length
+                    };
+
                     aprovarInspecao(
-                        `✅ ${encontrados} produtos reconhecidos na planilha!`,
-                        `Modo ativo: ${modoEstoque === 'SOBRESCREVER_ESTOQUE' ? '📌 Sobrescrever Saldo Real na Loja' : '🛒 Abater Vendas da Semana'}. Confira abaixo como ficará o estoque:`,
+                        `✅ Planograma / Inventário Validado (${rows.length} SKUs na planilha | ${precisamRepor} p/ repor = ${somaUnidadesRepor} un)!`,
+                        `Vinculados: ${vinculados} | Novos: ${novosSKUs} | Ausentes da planilha: ${ausentesDoInventario.length} produto(s).`,
                         mudancasPreview.join('\n')
                     );
+
+                    if (ausentesDoInventario.length > 0) {
+                        const resumoEl = document.getElementById('resumoInspetorTexto');
+                        const marcarAuto = (ativosAtuais.length >= 150 && rows.length < ativosAtuais.length * 0.85) ? 'checked' : '';
+                        resumoEl.innerHTML += `
+                            <div class="mt-3 p-3 rounded-xl bg-amber-500/15 border border-amber-500/50 text-amber-200 text-xs flex items-start gap-2.5">
+                                <input type="checkbox" id="chkLimparAusentesInventario" ${marcarAuto} class="mt-0.5">
+                                <label for="chkLimparAusentesInventario" class="cursor-pointer">
+                                    <strong>🧹 Modo Pós-Inventário Detectado (${ausentesDoInventario.length} produtos antigos não estão nesta planilha):</strong>
+                                    Marque esta caixa para <strong>ocultar/excluir automaticamente do catálogo ativo</strong> todos os ${ausentesDoInventario.length} itens que saíram do seu inventário (mantendo 100% das vendas passadas preservadas no financeiro!).
+                                </label>
+                            </div>
+                        `;
+                    }
 
                 } catch (err) {
                     bloquearPorIncompatibilidade("Erro ao ler planilha: " + err.message);
@@ -2494,12 +2754,12 @@
 
         async function confirmarEAplicarImportacaoValidada() {
             if (!payloadValidadoPendente) return;
-            const { tipo, rows, dados } = payloadValidadoPendente;
+            const { tipo, rows, dados, resumoTx } = payloadValidadoPendente;
             const hojeISO = new Date().toISOString().slice(0, 10);
 
             if (tipo === 'BACKUP_JSON') {
                 aplicarPacoteDaNuvem(dados);
-                await enviarDadosParaNuvem(false, true, `🐆 *BACKUP JSON RESTAURADO NA CENTRAL JAGUAR*\n${catalogo.length} SKUs e ${listaVIPs.length} VIPs sincronizados.`);
+                await enviarDadosParaNuvem(false, true, `🐆 *BACKUP JSON RESTAURADO NA CENTRAL JAGUAR*\n${catalogo.length} SKUs sincronizados.`);
                 cancelarInspecaoArquivo();
                 alert("✅ Backup JSON restaurado e gravado na Planilha Google!");
                 return;
@@ -2514,66 +2774,164 @@
             }
 
             if (tipo === 'TRANSACOES') {
+                const modoTx = document.getElementById('modoAplicacaoTransacoesMes')?.value || 'SOMAR_NOVAS';
+                const txInfo = resumoTx || analisarTransacoesFinanceirasEVIP(rows);
+                const mesAlvo = txInfo.mesDetectado || '2026-10';
+
+                if (!dadosMeses[mesAlvo]) {
+                    dadosMeses[mesAlvo] = { deb: 0, cred: 0, pix: 0, dias: 30, energia: 300, software: 386, contabil: 299, internet: 143, simples: 197.05, sorvete: 0, divida: 1900, compras: [] };
+                }
+
+                if (modoTx === 'SOMAR_NOVAS') {
+                    dadosMeses[mesAlvo].cred = +(Number(dadosMeses[mesAlvo].cred || 0) + txInfo.novCred).toFixed(2);
+                    dadosMeses[mesAlvo].pix = +(Number(dadosMeses[mesAlvo].pix || 0) + txInfo.novPix).toFixed(2);
+                    dadosMeses[mesAlvo].deb = +(Number(dadosMeses[mesAlvo].deb || 0) + txInfo.novDeb).toFixed(2);
+                    idsTransacoesProcessadas = Array.from(new Set([...idsTransacoesProcessadas, ...txInfo.novosIDs]));
+                    localStorage.setItem('jaguar_v60_tx_ids', JSON.stringify(idsTransacoesProcessadas));
+                } else if (modoTx === 'SUBSTITUIR_MES') {
+                    dadosMeses[mesAlvo].cred = txInfo.totCred;
+                    dadosMeses[mesAlvo].pix = txInfo.totPix;
+                    dadosMeses[mesAlvo].deb = txInfo.totDeb;
+                    idsTransacoesProcessadas = Array.from(new Set([...idsTransacoesProcessadas, ...txInfo.novosIDs]));
+                    localStorage.setItem('jaguar_v60_tx_ids', JSON.stringify(idsTransacoesProcessadas));
+                }
+
                 atualizarVIPsPorLinhas(rows);
-                await enviarDadosParaNuvem(false, true, `👑 *CLUBE VIP ATUALIZADO NA CENTRAL JAGUAR*\nTotal de *${listaVIPs.length} moradores identificados* sincronizados na Planilha Google.`);
+                sincronizarMesGlobal(mesAlvo);
+
+                const msgTelegramTx = `💰 *GANHO DE VENDAS SINCRONIZADO (${NOMES_MESES[mesAlvo] || mesAlvo})*\n` +
+                    `• Vendas na Planilha: *${txInfo.qtdSucesso} vendas (${brl(txInfo.somaTotal)})*\n` +
+                    `• Crédito: *${brl(txInfo.totCred)}* | PIX: *${brl(txInfo.totPix)}* | Débito: *${brl(txInfo.totDeb)}*\n` +
+                    `• Faturamento Acumulado do Mês: *${brl((dadosMeses[mesAlvo].cred||0)+(dadosMeses[mesAlvo].pix||0)+(dadosMeses[mesAlvo].deb||0))}*\n` +
+                    `👑 Clube VIP: *${listaVIPs.length} moradores identificados*`;
+
+                await enviarDadosParaNuvem(false, true, msgTelegramTx);
                 cancelarInspecaoArquivo();
-                abrirModuloApp('clube-vip');
-                alert(`👑 Clube Embaixadores VIP sincronizado com a Planilha Google!`);
+                abrirModuloApp('mes-a-mes');
+                alert(`✅ Ganhos de Vendas e Clube VIP sincronizados em ${NOMES_MESES[mesAlvo] || mesAlvo} e enviados ao Telegram!`);
                 return;
             }
 
-            // PORTAS 1, 3 e 4: ATUALIZAÇÃO REAL DE ESTOQUE, CUSTO, PREÇO E GIRO
+            // APLICAÇÃO DO PLANOGRAMA COMPLETO (403 ITENS) + CORTE PÓS-INVENTÁRIO
             const modoEstoque = document.getElementById('modoLeituraEstoqueCarrossel')?.value || 'SOBRESCREVER_ESTOQUE';
-            let sincronizados = 0;
+            const limparAusentes = document.getElementById('chkLimparAusentesInventario')?.checked || false;
+            let atualizados = 0, adicionados = 0, arquivadosInventario = 0;
+            const idsTocados = new Set();
 
             rows.forEach(r => {
-                const nomeRaw = extrairValorColuna(r, ['Nome', 'Produto', 'Item', 'Descrição', 'Descricao']);
+                const nomeRaw = extrairValorColuna(r, ['Nome', 'Produto', 'Item', 'Descrição']);
                 if (!nomeRaw) return;
-                const nomeNorm = normalizarTexto(nomeRaw);
 
-                const existente = catalogo.find(p => normalizarTexto(p.nome) === nomeNorm || normalizarTexto(p.nome).includes(nomeNorm) || nomeNorm.includes(normalizarTexto(p.nome)));
-                if (existente) {
-                    const custoNovo = converterNumeroBR(extrairValorColuna(r, ['Custo Atual', 'Custo', 'Preco Custo']));
-                    const precoNovo = converterNumeroBR(extrairValorColuna(r, ['Preço Atual', 'Preco Atual', 'Preço', 'Preco', 'Valor Venda']));
-                    const estCol = converterNumeroBR(extrairValorColuna(r, ['Estoque Atual', 'Estoque', 'Saldo', 'Saldo Atual', 'Qtd Estoque', 'Unidades']));
-                    const qtdCol = converterNumeroBR(extrairValorColuna(r, ['Quantidade', 'Qtd Vendida', 'Vendas']));
+                const eanRaw = extrairValorColuna(r, ['Código de Barras', 'Codigo de Barras', 'EAN']);
+                const custoNovo = converterNumeroBR(extrairValorColuna(r, ['Custo Atual', 'Custo', 'Preco Custo']));
+                const precoNovo = converterNumeroBR(extrairValorColuna(r, ['Preço Atual', 'Preco Atual', 'Preço', 'Preco']));
+                const idealCol = converterNumeroBR(extrairValorColuna(r, ['Qtd. Ideal', 'Qtd Ideal', 'Meta PAR', 'Par']));
+                const atualCol = converterNumeroBR(extrairValorColuna(r, ['Qtd. Atual', 'Qtd Atual', 'Estoque Atual', 'Estoque', 'Saldo']));
+                const qtdVendidaCol = converterNumeroBR(extrairValorColuna(r, ['Quantidade', 'Qtd Vendida', 'Vendas']));
+                const validadeNova = normalizarDataPlanilha(extrairValorColuna(r, ['Validade', 'Vencimento']));
 
-                    if (!isNaN(custoNovo) && custoNovo > 0) existente.custo = custoNovo;
-                    if (!isNaN(precoNovo) && precoNovo > 0) existente.preco = precoNovo;
+                let item = encontrarProdutoInteligente(nomeRaw, eanRaw, precoNovo);
 
-                    // Se a planilha tem coluna explícita de Estoque/Saldo, sobrescreve SEMPRE (mesmo se for 0!)
-                    if (!isNaN(estCol) && estCol >= 0) {
-                        existente.estoqueAtual = Math.round(estCol);
-                    } else if (!isNaN(qtdCol) && qtdCol >= 0) {
+                if (item && !idsTocados.has(item.id)) {
+                    idsTocados.add(item.id);
+                    item.nome = String(nomeRaw).trim();
+                    if (eanRaw) item.ean = String(eanRaw).trim();
+                    if (!isNaN(custoNovo) && custoNovo > 0) item.custo = custoNovo;
+                    if (!isNaN(precoNovo) && precoNovo > 0) item.preco = precoNovo;
+                    if (validadeNova) item.validade = validadeNova;
+
+                    if (!isNaN(idealCol) && idealCol >= 0) {
+                        item.parSemanal = Math.round(idealCol);
+                        if (idealCol > 0) item.giroSemanal = +(Math.max(1, idealCol / 1.5)).toFixed(1);
+                    }
+
+                    if (!isNaN(atualCol) && atualCol >= 0) {
+                        item.estoqueAtual = Math.round(atualCol);
+                    } else if (!isNaN(qtdVendidaCol) && qtdVendidaCol >= 0) {
                         if (modoEstoque === 'SOBRESCREVER_ESTOQUE') {
-                            existente.estoqueAtual = Math.round(qtdCol);
+                            item.estoqueAtual = Math.round(qtdVendidaCol);
                         } else {
-                            // Modo Abater Vendas da Semana
-                            const saldoAnt = existente.estoqueAtual !== undefined ? Number(existente.estoqueAtual) : (existente.parSemanal || 4);
-                            existente.estoqueAtual = Math.max(0, saldoAnt - Math.round(qtdCol));
-                            if (qtdCol > 0) {
-                                existente.giroSemanal = +(Math.max(1, qtdCol)).toFixed(1);
-                                existente.parSemanal = Math.max(2, Math.ceil(existente.giroSemanal * 1.4));
-                            }
+                            item.estoqueAtual = Math.max(0, (item.estoqueAtual || 0) - Math.round(qtdVendidaCol));
                         }
                     }
 
-                    existente.ultimaMov = hojeISO;
-                    existente.statusItem = 'ATIVO';
-                    sincronizados++;
+                    if (item.statusItem !== 'IGNORADO') {
+                        if (!isNaN(idealCol)) {
+                            if (Math.round(idealCol) === 0 && item.estoqueAtual > 0) {
+                                item.statusItem = 'PASSIVO_INVENTARIO';
+                                item.statusManualFixo = true;
+                            } else if (Math.round(idealCol) === 0 && item.estoqueAtual <= 0) {
+                                item.statusItem = 'FORA_DE_LINHA';
+                                item.statusManualFixo = true;
+                            } else {
+                                item.statusItem = 'ATIVO';
+                                item.statusManualFixo = true;
+                                item.ultimaMov = hojeISO;
+                            }
+                        }
+                    }
+                    atualizados++;
+                } else if (!item) {
+                    const pr = (!isNaN(precoNovo) && precoNovo > 0) ? precoNovo : 9.90;
+                    const cs = (!isNaN(custoNovo) && custoNovo > 0) ? custoNovo : +(pr * 0.66).toFixed(2);
+                    const par = (!isNaN(idealCol) && idealCol >= 0) ? Math.round(idealCol) : 2;
+                    const est = (!isNaN(atualCol) && atualCol >= 0) ? Math.round(atualCol) : 0;
+
+                    let st = 'ATIVO';
+                    if (par === 0 && est > 0) st = 'PASSIVO_INVENTARIO';
+                    else if (par === 0 && est <= 0) st = 'FORA_DE_LINHA';
+
+                    const novoId = catalogo.length + adicionados + 101;
+                    idsTocados.add(novoId);
+                    catalogo.push({
+                        id: novoId,
+                        ean: eanRaw ? String(eanRaw).trim() : '',
+                        cel: par >= 6 ? 'AA' : (par >= 3 ? 'BA' : 'BB'),
+                        nome: String(nomeRaw).trim(),
+                        cat: 'Planograma Loja',
+                        qtd: 0,
+                        custo: cs,
+                        preco: pr,
+                        sug: +(cs / (1 - 0.38)).toFixed(2),
+                        giroSemanal: +(Math.max(1, par / 1.5)).toFixed(1),
+                        parSemanal: par,
+                        tendenciaMes: 0,
+                        fardo: 6,
+                        estoqueAtual: est,
+                        noCarrinho: false,
+                        validade: validadeNova || '',
+                        quadrante: 'ESTRELA',
+                        planograma: '📦 Planograma Oficial',
+                        ultimaMov: hojeISO,
+                        statusItem: st,
+                        statusManualFixo: true
+                    });
+                    adicionados++;
                 }
             });
 
-            aplicarRegraExpurgo30Dias();
+            if (limparAusentes) {
+                catalogo.forEach(p => {
+                    if (!idsTocados.has(p.id) && p.statusItem !== 'ARQUIVADO_HISTORICO' && p.statusItem !== 'IGNORADO') {
+                        p.statusItem = 'ARQUIVADO_HISTORICO';
+                        p.statusManualFixo = true;
+                        p.estoqueAtual = 0;
+                        p.parSemanal = 0;
+                        p.noCarrinho = false;
+                        arquivadosInventario++;
+                    }
+                });
+            }
+
+            popularDatalistProdutos();
             atualizarInterfaceCompleta();
 
-            // Monta Resumo Executivo para o Sócio no Telegram
-            const resumoTelegram = gerarTextoResumoExecutivoSocio(`Planilha importada (${sincronizados} SKUs atualizados)`);
+            const resumoTelegram = gerarTextoResumoExecutivoSocio(`Planograma/Inventário (${atualizados} atualizados | ${adicionados} novos | ${arquivadosInventario} arquivados)`);
             await enviarDadosParaNuvem(false, true, resumoTelegram);
 
             cancelarInspecaoArquivo();
             abrirModuloApp('sec-atacadista');
-            alert(`✅ ${sincronizados} produtos tiveram seu Saldo Real atualizado! A Lista de Compras foi recalculada, gravada na Planilha Google e enviada ao Telegram!`);
+            alert(`✅ Planograma / Inventário aplicado com sucesso!\n• ${atualizados} SKUs atualizados\n• ${adicionados} SKUs novos adicionados\n• ${arquivadosInventario} SKUs antigos arquivados pós-inventário (mantendo histórico de vendas intacto!)`);
         }
 
         // =========================================================================
@@ -2585,17 +2943,17 @@
             const margem = calcularMargemPonderadaCatalogo();
             const calc = calcularFechamentoDeUmMes(d, margem);
 
-            let itensRepor = 0;
-            let custoRepor = 0;
+            let itensRepor = 0, unidRepor = 0, custoRepor = 0;
             let topUrgentes = [];
 
             catalogo.forEach(p => {
                 if (p.statusItem !== 'ATIVO') return;
-                const par = p.parSemanal || 2;
+                const par = p.parSemanal !== undefined ? Number(p.parSemanal) : 2;
                 const est = p.estoqueAtual !== undefined ? Number(p.estoqueAtual) : 0;
                 const falta = Math.max(0, par - est);
                 if (falta > 0) {
                     itensRepor++;
+                    unidRepor += falta;
                     custoRepor += (falta * p.custo);
                     if (topUrgentes.length < 8) {
                         topUrgentes.push(`• *${p.nome}*: Loja tem *${est} un* ➔ Comprar *${falta} un*`);
@@ -2603,22 +2961,23 @@
                 }
             });
 
-            const vencendo = catalogo.filter(p => p.validade && calcularDiasRestantesValidade(p.validade) <= 10);
+            const vencendo = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && (p.estoqueAtual || 0) > 0 && calcularDiasRestantesValidade(p.validade) <= 10);
             const passivos = catalogo.filter(p => p.statusItem === 'PASSIVO_INVENTARIO');
+            const ignorados = catalogo.filter(p => p.statusItem === 'IGNORADO' || p.statusItem === 'ARQUIVADO_HISTORICO');
 
             let txt = `🐆 *CENTRAL JAGUAR v6.0 • ${origemTitulo.toUpperCase()}*\n`;
             txt += `📍 _Minha Quitandinha — Res. Caroline Lacerda_\n\n`;
-            txt += `💰 * CAIXA & DRE (${NOMES_MESES[mesKey] || mesKey}):*\n`;
+            txt += `💰 *CAIXA & DRE (${NOMES_MESES[mesKey] || mesKey}):*\n`;
             txt += `• Faturamento Bruto: *${brl(calc.bruto)}*\n`;
             txt += `• Margem Ponderada: *${margem.toFixed(1)}%*\n`;
             txt += `• Saldo Livre Operacional: *${brl(calc.lucroOp)}*\n\n`;
-            txt += `🛒 *REPOSIÇÃO ATACADISTA (TODAS AS CURVAS):*\n`;
-            txt += `• Total para repor: *${itensRepor} SKUs* (${brl(custoRepor)})\n`;
+            txt += `🛒 *REPOSIÇÃO ATACADISTA:*\n`;
+            txt += `• Total para repor: *${itensRepor} SKUs (${unidRepor} unid.)* = *${brl(custoRepor)}*\n`;
             if (topUrgentes.length > 0) {
                 txt += topUrgentes.join('\n') + `\n\n`;
             }
-            txt += `⏰ *Validades ≤ 10 dias:* ${vencendo.length} lote(s)\n`;
-            txt += `⚠️ *Passivo de Inventário (>30d):* ${passivos.length} item(ns)`;
+            txt += `⏰ *Validades ≤ 10d (c/ estoque):* ${vencendo.length} lote(s)\n`;
+            txt += `⚠️ *Passivo de Inventário:* ${passivos.length} item(ns) | 🙈 *Ocultos/Pós-Inv:* ${ignorados.length}`;
             return txt;
         }
 
@@ -2638,15 +2997,15 @@
             const texto = gerarTextoResumoExecutivoSocio('Relatório p/ Sócio');
             await enviarTextoDiretoTelegram(texto);
             navigator.clipboard.writeText(texto);
-            alert("🐆 Relatório Executivo enviado para o Bot do Telegram e copiado para você colar no WhatsApp do seu sócio!");
+            alert("🐆 Relatório Executivo enviado para o Bot do Telegram e copiado para enviar ao seu sócio!");
         }
 
         async function dispararAlertaValidadeTelegram() {
-            const criticos = catalogo.filter(p => p.validade && calcularDiasRestantesValidade(p.validade) <= 15);
-            if (criticos.length === 0) return alert("Nenhum produto vence nos próximos 15 dias!");
+            const criticos = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && (p.estoqueAtual || 0) > 0 && calcularDiasRestantesValidade(p.validade) <= 15);
+            if (criticos.length === 0) return alert("Nenhum produto ativo com estoque vence nos próximos 15 dias!");
 
             let msg = "🚨 *ALERTA DE VALIDADE & PROMOÇÃO RELÂMPAGO — CENTRAL JAGUAR*\n\n";
-            criticos.forEach(p => {
+            criticos.slice(0, 15).forEach(p => {
                 const d = calcularDiasRestantesValidade(p.validade);
                 const promo = (p.custo * 1.08).toFixed(2).replace('.', ',');
                 msg += `⚠️ *${p.nome}* (${p.estoqueAtual || 1} un)\n• Vence em: *${d} dias* (${p.validade.split('-').reverse().join('/')})\n• Promo Sugerida: De ${brl(p.preco)} por *R$ ${promo}*\n• _Texto p/ Condomínio:_ "🔥 Oferta Relâmpago hoje na Quitandinha: ${p.nome} por apenas R$ ${promo}!"\n\n`;
@@ -2657,18 +3016,8 @@
         }
 
         // =========================================================================
-        // 7. DEMAIS MÓDULOS ORIGINAIS DA v5.1 (100% PRESERVADOS)
+        // 7. MÓDULOS DE GESTÃO, TABELA ABC, VIP, CÂMERA, XML, DAS E ETIQUETAS A4
         // =========================================================================
-        function calcularMargemPonderadaCatalogo() {
-            let fatTotal = 0, cmvTotal = 0;
-            catalogo.forEach(p => {
-                if (p.statusItem === 'FORA_DE_LINHA') return;
-                fatTotal += (p.preco * p.qtd);
-                cmvTotal += (p.custo * p.qtd);
-            });
-            return fatTotal > 0 ? ((fatTotal - cmvTotal) / fatTotal) * 100 : 31.34;
-        }
-
         function somarGastosExtrasAtivos() {
             return gastosExtras.reduce((acc, g) => acc + (Number(g.valor) || 0), 0);
         }
@@ -2678,7 +3027,7 @@
             const boxAlerta = document.getElementById('listaRadarAlerta');
             if (!boxAlta || !boxAlerta) return;
 
-            const topVendidos = [...catalogo].filter(p => p.statusItem !== 'FORA_DE_LINHA').sort((a, b) => (b.preco * b.qtd) - (a.preco * a.qtd)).slice(0, 4);
+            const topVendidos = [...catalogo].filter(p => !itemEstaOcultoOuExcluido(p)).sort((a, b) => (b.preco * b.qtd) - (a.preco * a.qtd)).slice(0, 4);
             boxAlta.innerHTML = '';
             topVendidos.forEach((p, idx) => {
                 const fat = p.preco * p.qtd;
@@ -2925,7 +3274,7 @@
             const dl = document.getElementById('listaProdutosCatalogo');
             if (!dl) return;
             dl.innerHTML = '';
-            catalogo.forEach(p => {
+            catalogo.filter(p => !itemEstaOcultoOuExcluido(p)).forEach(p => {
                 const opt = document.createElement('option');
                 opt.value = p.nome;
                 dl.appendChild(opt);
@@ -2953,7 +3302,7 @@
                 return alert("Preencha o Nome do Produto, a Quantidade e o Custo Unitário!");
             }
 
-            let prodCat = catalogo.find(p => normalizarTexto(p.nome) === normalizarTexto(nome));
+            let prodCat = encontrarProdutoInteligente(nome, null, NaN);
             let precoVenda = +(custo / (1 - 0.40)).toFixed(2);
             if (prodCat) {
                 prodCat.custo = custo;
@@ -3373,6 +3722,7 @@
         }
 
         function renderizarTabelaABC() {
+            garantirOpcoesFiltroIgnorados();
             const busca = (document.getElementById('buscaProdutoABC')?.value || '').toLowerCase();
             const filtro = document.getElementById('filtroTabelaABC')?.value || 'TOP20';
             const tbody = document.getElementById('corpoTabelaABC');
@@ -3380,7 +3730,9 @@
             tbody.innerHTML = '';
 
             let cEstrela = 0, cCavalo = 0, cQuebra = 0, cCao = 0;
-            catalogo.forEach(item => {
+            const itensAtivos = catalogo.filter(i => !itemEstaOcultoOuExcluido(i));
+
+            itensAtivos.forEach(item => {
                 const qI = calcularQuadranteItem(item);
                 if (qI.cod === 'ESTRELA') cEstrela++;
                 else if (qI.cod === 'CAVALO') cCavalo++;
@@ -3395,8 +3747,18 @@
                 document.getElementById('qtdQuadCao').innerText = `${cCao} itens`;
             }
 
-            const listaBaseABC = (filtro === 'TOP20') ? catalogo.slice(0, 25) : catalogo;
+            let listaBaseABC = catalogo;
+            if (filtro === 'TOP20') {
+                listaBaseABC = itensAtivos.slice(0, 25);
+            } else if (filtro === 'TODOS' || filtro === 'URGENTES' || filtro === 'AA') {
+                listaBaseABC = itensAtivos;
+            }
+
             listaBaseABC.forEach(item => {
+                const status = item.statusItem || 'ATIVO';
+                if (filtro === 'INATIVOS' && status !== 'PASSIVO_INVENTARIO' && status !== 'FORA_DE_LINHA') return;
+                if (filtro === 'IGNORADOS' && status !== 'IGNORADO' && status !== 'ARQUIVADO_HISTORICO') return;
+
                 const qInfo = calcularQuadranteItem(item);
                 if (busca && !item.nome.toLowerCase().includes(busca) && !(item.cat||'').toLowerCase().includes(busca)) return;
                 if (quadranteAtivoFiltro !== 'TODOS' && qInfo.cod !== quadranteAtivoFiltro) return;
@@ -3406,10 +3768,14 @@
 
                 if (filtro === 'URGENTES' && mb >= 30) return;
                 if (filtro === 'AA' && item.cel !== 'AA') return;
-                if (filtro === 'INATIVOS' && item.statusItem === 'ATIVO') return;
 
                 let diag = `<span class="text-emerald-400 font-semibold">✅ ${qInfo.label}</span> <span class="text-slate-400 block text-[10px]">${qInfo.plano}</span>`;
                 if (ml <= 5) diag = `<span class="text-rose-400 font-extrabold">🚨 Subir p/ ${brl(item.sug)}</span> <span class="text-slate-400 block text-[10px]">${qInfo.plano}</span>`;
+
+                const btnGestao = (status === 'IGNORADO' || status === 'ARQUIVADO_HISTORICO')
+                    ? `<button onclick="restaurarItemParaAtivo(${item.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[10px] font-bold">♻️ Restaurar</button>`
+                    : `<button onclick="ignorarItemRapido(${item.id})" class="bg-slate-800 hover:bg-amber-500/30 text-slate-300 hover:text-amber-300 border border-slate-700 px-2 py-1 rounded text-[10px] font-bold" title="Ignorar produto">🙈</button>
+                       <button onclick="excluirItemMantendoHistorico(${item.id})" class="bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white px-2 py-1 rounded text-[10px] font-bold ml-1" title="Excluir do catálogo ativo mantendo vendas passadas">🗑️</button>`;
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800/50 transition">
@@ -3421,16 +3787,10 @@
                         <td class="py-2.5 px-2 text-center"><input type="number" step="0.10" value="${item.preco.toFixed(2)}" onchange="atualizarPrecoProduto(${item.id}, this.value)" class="w-18 p-1 rounded text-center font-extrabold text-emerald-400"></td>
                         <td class="py-2.5 px-2 text-center font-bold ${mb < 28 ? 'text-rose-400' : 'text-white'}">${mb.toFixed(1)}%</td>
                         <td class="py-2.5 px-2"><input type="date" value="${item.validade || ''}" onchange="atualizarValidadeProdutoTabela(${item.id}, this.value)" class="p-1 rounded text-[10px] w-28"></td>
-                        <td class="py-2.5 px-2">
-                            <select onchange="alternarStatusItem30d(${item.id}, this.value)" class="p-1 rounded text-[10px] font-bold">
-                                <option value="ATIVO" ${item.statusItem === 'ATIVO' ? 'selected' : ''}>🟢 Ativo</option>
-                                <option value="PASSIVO_INVENTARIO" ${item.statusItem === 'PASSIVO_INVENTARIO' ? 'selected' : ''}>⚠️ Passivo 30d</option>
-                                <option value="FORA_DE_LINHA" ${item.statusItem === 'FORA_DE_LINHA' ? 'selected' : ''}>🚫 Fora Linha</option>
-                            </select>
-                        </td>
+                        <td class="py-2.5 px-2 whitespace-nowrap">${btnGestao}</td>
                         <td class="py-2.5 px-2">${diag}</td>
                         <td class="py-2.5 px-2 text-right">
-                            <button onclick="abrirBannerIAProduto(${item.id})" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 px-2.5 py-1 rounded-lg text-[10px] font-bold">🎨 Banner IA</button>
+                            <button onclick="abrirBannerIAProduto(${item.id})" class="bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 px-2.5 py-1 rounded-lg text-[10px] font-bold">🎨 IA</button>
                         </td>
                     </tr>
                 `;
@@ -3499,7 +3859,7 @@
             const nome = document.getElementById('valProdNome').value.trim();
             const dt = document.getElementById('valDataInput').value;
             if (!nome || !dt) return alert("Escolha o produto e informe a data de vencimento!");
-            const prod = catalogo.find(p => normalizarTexto(p.nome) === normalizarTexto(nome));
+            const prod = encontrarProdutoInteligente(nome, null, NaN);
             if (prod) {
                 prod.validade = dt;
                 salvarTudo();
@@ -3514,11 +3874,12 @@
             if (!container) return;
             container.innerHTML = '';
 
-            const monitorados = catalogo.filter(p => p.validade && p.validade.trim() !== '');
+            // Mostra lotes ativos que têm estoque na loja (>0) e validade preenchida
+            const monitorados = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && p.validade.trim() !== '' && (p.estoqueAtual || 0) > 0);
             monitorados.sort((a, b) => new Date(a.validade) - new Date(b.validade));
 
             if (monitorados.length === 0) {
-                container.innerHTML = `<div class="col-span-3 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">Nenhum lote com validade cadastrada no momento.</div>`;
+                container.innerHTML = `<div class="col-span-3 p-4 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">Nenhum lote ativo com estoque na prateleira e validade cadastrada no momento.</div>`;
                 return;
             }
 
@@ -3546,13 +3907,14 @@
                             </div>
                             <h4 class="font-extrabold text-white text-sm mt-2">${p.nome}</h4>
                             <p class="text-[11px] text-slate-300 mt-1">
-                                Estoque: <strong>${p.estoqueAtual} un</strong> | Normal: <strong>${brl(p.preco)}</strong><br>
+                                Na Loja: <strong>${p.estoqueAtual} un</strong> | Normal: <strong>${brl(p.preco)}</strong><br>
                                 🔥 <strong>Sugestão Queima Rápida: <span class="text-emerald-400">${brl(precoQueima)}</span></strong>
                             </p>
                         </div>
                         <div class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-800/80">
                             <button onclick="abrirGoogleAgendaProduto(${p.id})" class="flex-1 bg-sky-600/30 hover:bg-sky-600 text-sky-200 py-1.5 px-2 rounded-lg text-[10px] font-bold">📅 Agenda (-7d)</button>
                             <button onclick="abrirBannerIAProduto(${p.id}, true)" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 py-1.5 px-2 rounded-lg text-[10px] font-extrabold">✨ Promo IA</button>
+                            <button onclick="ignorarItemRapido(${p.id})" class="bg-slate-800 hover:bg-rose-500/30 text-slate-300 px-2 py-1.5 rounded-lg text-[10px] font-bold" title="Ignorar produto">🙈</button>
                         </div>
                     </div>
                 `;
@@ -3572,8 +3934,8 @@
         }
 
         function exportarCalendarioICS() {
-            const monitorados = catalogo.filter(p => p.validade && p.validade.trim() !== '');
-            if (monitorados.length === 0) return alert("Cadastre pelo menos uma data de validade primeiro!");
+            const monitorados = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && p.validade.trim() !== '' && (p.estoqueAtual || 0) > 0);
+            if (monitorados.length === 0) return alert("Nenhum lote com estoque e validade cadastrada!");
             let ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Central Jaguar v6.0//PT"];
             monitorados.forEach(p => {
                 const vencDate = new Date(p.validade + "T09:00:00");
@@ -3590,12 +3952,12 @@
         }
 
         function dispararWhatsAppValidade() {
-            const criticos = catalogo.filter(p => p.validade && calcularDiasRestantesValidade(p.validade) <= 15);
-            if (criticos.length === 0) return alert("Nenhum produto vence nos próximos 15 dias!");
+            const criticos = catalogo.filter(p => !itemEstaOcultoOuExcluido(p) && p.validade && (p.estoqueAtual || 0) > 0 && calcularDiasRestantesValidade(p.validade) <= 15);
+            if (criticos.length === 0) return alert("Nenhum produto ativo com estoque vence nos próximos 15 dias!");
             let msg = "🚨 *ALERTA DE VALIDADE — MINHA QUITANDINHA*\n\n";
             criticos.forEach(p => {
                 const d = calcularDiasRestantesValidade(p.validade);
-                msg += `⚠️ *${p.nome}*: Vence em *${d}d* — Baixar de ${brl(p.preco)} p/ *${brl(p.custo * 1.08)}*\n`;
+                msg += `⚠️ *${p.nome}* (${p.estoqueAtual} un): Vence em *${d}d* — Baixar de ${brl(p.preco)} p/ *${brl(p.custo * 1.08)}*\n`;
             });
             navigator.clipboard.writeText(msg);
             window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
@@ -3700,9 +4062,6 @@
             document.getElementById('modalBannerIA').classList.remove('hidden');
         }
 
-        // =========================================================================
-        // 8. CÂMERA BIP, SHRINKAGE, XML NFE, SIMPLES NACIONAL, SÓCIOS E ETIQUETAS A4
-        // =========================================================================
         function iniciarLeitorCamera() {
             const area = document.getElementById('areaCameraBip');
             area.classList.remove('hidden');
@@ -3716,22 +4075,20 @@
                     pararLeitorCamera();
                 },
                 () => {}
-            ).catch(() => alert("Permita o acesso à câmera no navegador!"));
+            ).catch(() => alert("Permita o acesso à câmara no navegador!"));
         }
 
         function pararLeitorCamera() {
             const area = document.getElementById('areaCameraBip');
             if (area) area.classList.add('hidden');
-            if (leitorCameraHtml5) {
-                leitorCameraHtml5.stop().catch(() => {});
-            }
+            if (leitorCameraHtml5) leitorCameraHtml5.stop().catch(() => {});
         }
 
         function executarBipManual() {
             const termo = normalizarTexto(document.getElementById('inputBipManual').value);
             const box = document.getElementById('resultadoBipRapido');
             if (!termo || !box) return;
-            const p = catalogo.find(x => normalizarTexto(x.nome).includes(termo) || String(x.id) === termo);
+            const p = catalogo.find(x => normalizarTexto(x.nome).includes(termo) || String(x.id) === termo || (x.ean && String(x.ean) === termo));
             box.classList.remove('hidden');
             if (!p) {
                 box.innerHTML = `<span class="text-rose-400 font-bold">Produto não localizado para "${termo}".</span>`;
@@ -3763,7 +4120,7 @@
             } else {
                 const prejuizo = dif * custo;
                 const vendasParaRepor = Math.ceil(prejuizo / Math.max(0.5, custo * 0.35));
-                box.innerHTML = `<span class="text-rose-400 font-extrabold">🚨 Divergência de -${dif} unid. (${brl(prejuizo)} de perda no custo)!</span> Você precisa vender <strong>~${vendasParaRepor} unidades</strong> deste item apenas para recuperar o prejuízo.`;
+                box.innerHTML = `<span class="text-rose-400 font-extrabold">🚨 Divergência de -${dif} unid. (${brl(prejuizo)} de perda no custo)!</span> Precisa de vender <strong>~${vendasParaRepor} unidades</strong> deste item para recuperar o prejuízo.`;
             }
         }
 
@@ -3771,9 +4128,7 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                aplicarXMLTexto(e.target.result);
-            };
+            reader.onload = function(e) { aplicarXMLTexto(e.target.result); };
             reader.readAsText(file);
         }
 
@@ -3802,7 +4157,7 @@
                 const qCom = parseFloat(dets[i].getElementsByTagName("qCom")[0]?.textContent || "0");
                 const vUnCom = parseFloat(dets[i].getElementsByTagName("vUnCom")[0]?.textContent || "0");
 
-                const itemCat = catalogo.find(p => normalizarTexto(p.nome).includes(normalizarTexto(xProd)) || normalizarTexto(xProd).includes(normalizarTexto(p.nome)));
+                const itemCat = encontrarProdutoInteligente(xProd, null, NaN);
                 if (itemCat) {
                     itemCat.custo = vUnCom;
                     itemCat.estoqueAtual = (Number(itemCat.estoqueAtual) || 0) + Math.round(qCom);
@@ -3822,7 +4177,7 @@
 
             let somaMonofasico = 0, somaTotalCat = 0;
             catalogo.forEach(p => {
-                const fatItem = p.preco * p.qtd;
+                const fatItem = p.preco * (p.qtd || 1);
                 somaTotalCat += fatItem;
                 const catNorm = normalizarTexto(p.cat);
                 if (catNorm.includes('bebida') || catNorm.includes('higiene') || catNorm.includes('limpeza')) {
@@ -3911,14 +4266,15 @@
             const tipo = document.getElementById('filtroTipoEtiquetas')?.value || 'TOP_REAJUSTE';
             container.innerHTML = '';
 
+            const ativos = catalogo.filter(p => !itemEstaOcultoOuExcluido(p));
             let selecionados = [];
             if (tipo === 'QUEIMA_VALIDADE') {
-                selecionados = catalogo.filter(p => (p.validade && calcularDiasRestantesValidade(p.validade) <= 15) || p.statusItem === 'PASSIVO_INVENTARIO').slice(0, 18);
-                if (selecionados.length === 0) selecionados = catalogo.slice(0, 9);
+                selecionados = ativos.filter(p => (p.validade && (p.estoqueAtual || 0) > 0 && calcularDiasRestantesValidade(p.validade) <= 15) || p.statusItem === 'PASSIVO_INVENTARIO').slice(0, 18);
+                if (selecionados.length === 0) selecionados = ativos.slice(0, 9);
             } else if (tipo === 'ESTRELAS') {
-                selecionados = catalogo.filter(p => calcularQuadranteItem(p).cod === 'ESTRELA').slice(0, 18);
+                selecionados = ativos.filter(p => calcularQuadranteItem(p).cod === 'ESTRELA').slice(0, 18);
             } else {
-                selecionados = catalogo.filter(p => p.cel === 'AA').slice(0, 18);
+                selecionados = ativos.filter(p => p.cel === 'AA').slice(0, 18);
             }
 
             selecionados.forEach(p => {
@@ -3979,7 +4335,7 @@
             const resumoLoja = gerarTextoResumoExecutivoSocio('Contexto IA');
 
             if (!apiKey) {
-                box.innerHTML = `<div class="space-y-2"><p class="text-amber-300 font-bold">💡 Diagnóstico Local Instantâneo (Cole sua GEMINI_API_KEY acima se quiser usar a API ao vivo):</p><pre class="whitespace-pre-wrap text-xs text-slate-300 bg-slate-950 p-3 rounded-lg">${resumoLoja}</pre></div>`;
+                box.innerHTML = `<div class="space-y-2"><p class="text-amber-300 font-bold">💡 Diagnóstico Local Instantâneo (Cole a sua GEMINI_API_KEY acima se quiser usar a API ao vivo):</p><pre class="whitespace-pre-wrap text-xs text-slate-300 bg-slate-950 p-3 rounded-lg">${resumoLoja}</pre></div>`;
                 return;
             }
 
@@ -4000,5 +4356,7 @@
             }
         }
     </script>
+</body>
+</html>
 </body>
 </html>
